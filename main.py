@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from uuid import uuid4
 from datetime import datetime
 
-DATABASE_URL = "postgresql://postgres:your_password@localhost:5432/psychotest"
+DATABASE_URL = "postgresql://spt:jnDUYk3f43543545hldjfhjkpzYYjdlhGPKnvhe4334@spt.one:11697/spt_ovz"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
