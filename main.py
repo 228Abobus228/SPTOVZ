@@ -9,7 +9,7 @@ from uuid import uuid4
 from datetime import datetime
 
 DATABASE_URL = "postgresql://postgres:your_password@localhost:5432/psychotest"
-#fsdfjhkjjk
+#fsdfjhkjjkjkh
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
