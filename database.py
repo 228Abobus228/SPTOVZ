@@ -1,16 +1,17 @@
+import os
+from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgresql://spt:jnDUYk3f43543545hldjfhjkpzYYjdlhGPKnvhe4334@spt.one:11697/spt_ovz"
+# Загрузка переменных из .env
+load_dotenv()
 
-# Подключение к базе данных
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 engine = create_engine(DATABASE_URL)
-
-# Создание сессии
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
-# Базовый класс для моделей
 Base = declarative_base()
 
 # Функция-зависимость для FastAPI
