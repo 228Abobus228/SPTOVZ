@@ -9,7 +9,7 @@ from uuid import uuid4
 from datetime import datetime
 
 DATABASE_URL = "postgresql://spt:jnDUYk3f43543545hldjfhjkpzYYjdlhGPKnvhe4334@spt.one:11697/spt_ovz"
-#ffs
+#ffsasd
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
 Base = declarative_base()
