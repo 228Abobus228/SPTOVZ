@@ -1,30 +1,34 @@
 from pydantic import BaseModel
 
-# === Класс ===
 class ClassCreate(BaseModel):
     name: str
+    psychologist_id: str
 
-class ClassResponse(BaseModel):
+class ClassOut(BaseModel):
     id: str
     name: str
-
+    psychologist_id: str
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-# === Группа ===
 class GroupCreate(BaseModel):
     name: str
     class_id: str
 
-class GroupResponse(BaseModel):
+class GroupOut(BaseModel):
     id: str
     name: str
     class_id: str
-
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-# === Ключ ===
-class KeyResponse(BaseModel):
+class GenerateKeysRequest(BaseModel):
+    count: int = 1
+
+class KeyOut(BaseModel):
     id: str
     code: str
+    used: bool
+    group_id: str
+    class Config:
+        from_attributes = True
