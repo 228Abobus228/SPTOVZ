@@ -4,3 +4,4 @@ SQLAlchemy
 passlib[bcrypt]
 python-dotenv
 pydantic
+PyYAML

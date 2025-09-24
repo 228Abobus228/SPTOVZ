@@ -5,8 +5,8 @@ class StartTestRequest(BaseModel):
     code: str
     age: int
     gender: str
-    # allowed: 'hearing' | 'vision' | 'motor'
-    diagnosis: Literal["hearing", "vision", "motor"] = Field(..., description="Форма нарушения")
+    gender: Literal["male", "female"]
+    diagnosis: Literal["hearing", "vision", "motor"]
 
 class StartTestResponse(BaseModel):
     session_id: str

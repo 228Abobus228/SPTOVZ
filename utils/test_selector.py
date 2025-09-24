@@ -3,67 +3,73 @@ from enum import Enum
 from typing import NamedTuple
 
 
-# --- Канонические значения (slug-и на латинице) ---
 class InstitutionType(str, Enum):
-    SCHOOL = "school"          # школа
-    KINDERGARTEN = "kindergarten"  # детский сад / дошкольное учреждение
-    COLLEGE = "college"        # колледж / техникум
+    SCHOOL = "school"
+    COLLEGE = "college"
+    UNIVERSITY = "university"
 
 
 class Impairment(str, Enum):
-    HEARING = "hearing"        # нарушение слуха
-    VISION = "vision"          # нарушение зрения
-    MOTOR = "motor"            # нарушение ОДА
+    HEARING = "hearing"
+    VISION = "vision"
+    MOTOR = "motor"
 
 
-class TestInfo(NamedTuple):
-    form_type: str     # условно "A", "B"… или код формы бланка
-    test_name: str     # человекочитаемое название теста/набора методик
+class Gender(str, Enum):
+    MALE = "male"
+    FEMALE = "female"
 
 
-# --- Матрица выбора теста ---
-# Пример: подставь свои реальные коды форм и названия тестов
-MATRIX: dict[tuple[InstitutionType, Impairment], TestInfo] = {
-    # SCHOOL
-    (InstitutionType.SCHOOL, InstitutionType.__members__["SCHOOL"].value and Impairment.HEARING): TestInfo("A", "EAR-SCHOOL"),
-    (InstitutionType.SCHOOL, Impairment.VISION):  TestInfo("A", "VISION-SCHOOL"),
-    (InstitutionType.SCHOOL, Impairment.MOTOR):   TestInfo("A", "MOTOR-SCHOOL"),
+class TestPick(NamedTuple):
+    code: str    # уникальный код (например, SCH_HEAR_M_V1)
+    title: str   # человекочитаемое название (можно подтянуть из паспорта)
 
-    # COLLEGE
-    (InstitutionType.KINDERGARTEN, Impairment.HEARING): TestInfo("B", "EAR-KINDER"),
-    (InstitutionType.KINDERGARTEN, Impairment.VISION):  TestInfo("B", "VISION-KINDER"),
-    (InstitutionType.KINDERGARTEN, Impairment.MOTOR):   TestInfo("B", "MOTOR-KINDER"),
 
-    # COLLEGE
-    (InstitutionType.COLLEGE, Impairment.HEARING): TestInfo("C", "EAR-COLLEGE"),
-    (InstitutionType.COLLEGE, Impairment.VISION):  TestInfo("C", "VISION-COLLEGE"),
-    (InstitutionType.COLLEGE, Impairment.MOTOR):   TestInfo("C", "MOTOR-COLLEGE"),
+# Хелпер для генерации кодов по конвенции:
+#  SCH|COL|UNI  +  HEAR|VIS|MOT  +  M|F  +  _V1
+def _code(inst: InstitutionType, imp: Impairment, gen: Gender, version: int = 1) -> str:
+    inst_map = {
+        InstitutionType.SCHOOL: "SCH",
+        InstitutionType.COLLEGE: "COL",
+        InstitutionType.UNIVERSITY: "UNI",
+    }
+    imp_map = {
+        Impairment.HEARING: "HEAR",
+        Impairment.VISION: "VIS",
+        Impairment.MOTOR: "MOT",
+    }
+    gen_map = {
+        Gender.MALE: "M",
+        Gender.FEMALE: "F",
+    }
+    return f"{inst_map[inst]}_{imp_map[imp]}_{gen_map[gen]}_V{version}"
+
+
+# Матрица 3×3×2 → код теста (версию можно потом менять централизованно)
+DEFAULT_VERSION = 1
+MATRIX: dict[tuple[InstitutionType, Impairment, Gender], str] = {
+    (i, p, g): _code(i, p, g, DEFAULT_VERSION)
+    for i in InstitutionType
+    for p in Impairment
+    for g in Gender
 }
 
 
-# --- Основная функция выбора ---
-def select_test(institution_type: str | None, impairment: str) -> TestInfo:
-    """
-    Возвращает (form_type, test_name) по типу учреждения и форме нарушения.
-    - institution_type может быть None (если у пользователя не заполнено) — в таком случае кидаем ValueError.
-    - impairment обязателен: 'hearing' | 'vision' | 'motor'
-    """
-    if not institution_type:
-        raise ValueError("Тип учреждения не задан для психолога")
-
+def select_test_code(institution_type: str, impairment: str, gender: str) -> str:
     try:
         inst = InstitutionType(institution_type)
     except ValueError as e:
         raise ValueError(f"Неизвестный тип учреждения: {institution_type!r}") from e
-
     try:
         imp = Impairment(impairment)
     except ValueError as e:
         raise ValueError(f"Неизвестная форма нарушения: {impairment!r}") from e
+    try:
+        gen = Gender(gender)
+    except ValueError as e:
+        raise ValueError(f"Неизвестный пол: {gender!r}") from e
 
-    info = MATRIX.get((inst, imp))
-    if not info:
-        # На всякий случай, если матрицу когда-то сократим и выпадет комбинация
-        raise ValueError(f"Комбинация не поддерживается: ({inst.value}, {imp.value})")
-
-    return info
+    code = MATRIX.get((inst, imp, gen))
+    if not code:
+        raise ValueError(f"Комбинация не поддерживается: ({inst.value}, {imp.value}, {gen.value})")
+    return code
