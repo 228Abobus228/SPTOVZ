@@ -3,7 +3,7 @@ from SPTOVZ.database import Base, engine
 
 # Важно: импортируем модели, чтобы SQLAlchemy "увидел" таблицы
 from SPTOVZ import models as _models  # noqa: F401
-
+from SPTOVZ.routers import session as session_router
 from SPTOVZ.routers import auth as auth_router
 from SPTOVZ.routers import class_group as class_group_router
 from SPTOVZ.routers import session as session_router

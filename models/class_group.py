@@ -6,7 +6,7 @@ class Class(Base):
     __tablename__ = "classes"
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
-
+    education_type = Column(String, nullable=False)
     psychologist_id = Column(String, ForeignKey("users.id"), nullable=False)
     psychologist = relationship("User", back_populates="classes")
 

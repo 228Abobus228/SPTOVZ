@@ -12,7 +12,7 @@ class StartTestResponse(BaseModel):
     session_id: str
     test_name: str
     form_type: str
-    questions: List[str] = []
+    questions: List[dict] = []
 
 class AnswerItem(BaseModel):
     question_id: str
@@ -20,4 +20,4 @@ class AnswerItem(BaseModel):
 
 class SubmitAnswersRequest(BaseModel):
     session_id: str
-    answers: List[AnswerItem]
+    answers: List[Any]

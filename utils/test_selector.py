@@ -1,56 +1,69 @@
 # SPTOVZ/utils/test_selector.py
-from enum import Enum
+from __future__ import annotations
 
-class InstitutionType(str, Enum):
-    SCHOOL = "school"
-    COLLEGE = "college"      # техникум/колледж
-    UNIVERSITY = "university"
+from typing import Tuple
+from sqlalchemy.orm import Session
 
-class Impairment(str, Enum):
-    HEARING = "hearing"
-    VISION = "vision"
-    MOTOR = "motor"
+from SPTOVZ.models.testbank import TestPassport, TestContent
 
-class Gender(str, Enum):
-    MALE = "male"
-    FEMALE = "female"
 
-# ЯВНАЯ матрица 3×3×2 → код теста (должен совпадать с meta.code в YAML)
-MATRIX: dict[tuple[InstitutionType, Impairment, Gender], str] = {
-    # SCHOOL
-    (InstitutionType.SCHOOL, Impairment.HEARING, Gender.MALE):   "SCH_HEAR_M_V1",
-    (InstitutionType.SCHOOL, Impairment.HEARING, Gender.FEMALE): "SCH_HEAR_F_V1",
-    (InstitutionType.SCHOOL, Impairment.VISION,  Gender.MALE):   "SCH_VIS_M_V1",
-    (InstitutionType.SCHOOL, Impairment.VISION,  Gender.FEMALE): "SCH_VIS_F_V1",
-    (InstitutionType.SCHOOL, Impairment.MOTOR,   Gender.MALE):   "SCH_MOT_M_V1",
-    (InstitutionType.SCHOOL, Impairment.MOTOR,   Gender.FEMALE): "SCH_MOT_F_V1",
+ALLOWED_INSTITUTIONS = {"school", "college", "university"}
+ALLOWED_IMPAIRMENTS = {"hearing", "vision", "motor"}
 
-    # COLLEGE
-    (InstitutionType.COLLEGE, Impairment.HEARING, Gender.MALE):   "COL_HEAR_M_V1",
-    (InstitutionType.COLLEGE, Impairment.HEARING, Gender.FEMALE): "COL_HEAR_F_V1",
-    (InstitutionType.COLLEGE, Impairment.VISION,  Gender.MALE):   "COL_VIS_M_V1",
-    (InstitutionType.COLLEGE, Impairment.VISION,  Gender.FEMALE): "COL_VIS_F_V1",
-    (InstitutionType.COLLEGE, Impairment.MOTOR,   Gender.MALE):   "COL_MOT_M_V1",
-    (InstitutionType.COLLEGE, Impairment.MOTOR,   Gender.FEMALE): "COL_MOT_F_V1",
 
-    # UNIVERSITY
-    (InstitutionType.UNIVERSITY, Impairment.HEARING, Gender.MALE):   "UNI_HEAR_M_V1",
-    (InstitutionType.UNIVERSITY, Impairment.HEARING, Gender.FEMALE): "UNI_HEAR_F_V1",
-    (InstitutionType.UNIVERSITY, Impairment.VISION,  Gender.MALE):   "UNI_VIS_M_V1",
-    (InstitutionType.UNIVERSITY, Impairment.VISION,  Gender.FEMALE): "UNI_VIS_F_V1",
-    (InstitutionType.UNIVERSITY, Impairment.MOTOR,   Gender.MALE):   "UNI_MOT_M_V1",
-    (InstitutionType.UNIVERSITY, Impairment.MOTOR,   Gender.FEMALE): "UNI_MOT_F_V1",
-}
+def _norm(s: str) -> str:
+    return (s or "").strip().lower()
 
-def select_test_code(institution_type: str, impairment: str, gender: str) -> str:
-    try:
-        inst = InstitutionType(institution_type)
-        imp  = Impairment(impairment)
-        gen  = Gender(gender)
-    except ValueError as e:
-        raise ValueError(f"Недопустимое значение: {e}")
 
-    code = MATRIX.get((inst, imp, gen))
-    if not code:
-        raise ValueError(f"Комбинация не поддерживается: ({inst.value}, {imp.value}, {gen.value})")
-    return code
+def select_test(
+    db: Session,
+    institution: str,
+    impairment: str,
+) -> Tuple[TestPassport, TestContent]:
+    """
+    Возвращает (passport, content) для теста по паре (institution, impairment).
+    Пол НЕ участвует в выборе (используется позже при обработке результатов).
+
+    Правила выбора:
+      1) фильтр по institution & impairment;
+      2) среди найденных берём максимальную version;
+      3) если есть несколько с той же version, отдаём запись с gender == "any"
+         (для совместимости со старыми данными), иначе первую попавшуюся.
+
+    Исключения:
+      ValueError — если тест не найден или нет контента.
+    """
+    inst = _norm(institution)
+    imp = _norm(impairment)
+
+    if inst not in ALLOWED_INSTITUTIONS:
+        raise ValueError(f"institution должен быть одним из {sorted(ALLOWED_INSTITUTIONS)}")
+    if imp not in ALLOWED_IMPAIRMENTS:
+        raise ValueError(f"impairment должен быть одним из {sorted(ALLOWED_IMPAIRMENTS)}")
+
+    # Все кандидаты по паре (institution, impairment)
+    candidates = (
+        db.query(TestPassport)
+        .filter(
+            TestPassport.institution == inst,
+            TestPassport.impairment == imp,
+        )
+        .order_by(TestPassport.version.desc())
+        .all()
+    )
+
+    if not candidates:
+        raise ValueError(f"Тест не найден для ({inst}, {imp})")
+
+    # Лучшая версия
+    best_version = candidates[0].version
+    same_version = [p for p in candidates if p.version == best_version]
+
+    # Предпочтительно gender == "any" (если есть), иначе берём первую
+    passport = next((p for p in same_version if (p.gender or "").lower() == "any"), same_version[0])
+
+    content = db.get(TestContent, passport.id)
+    if not content:
+        raise ValueError(f"Контент теста '{passport.id}' не найден")
+
+    return passport, content
