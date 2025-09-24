@@ -7,8 +7,9 @@ from SPTOVZ.database import get_db
 from SPTOVZ.models.class_group import Key
 from SPTOVZ.models.session import TestSession
 from SPTOVZ.models.testbank import TestPassport, TestContent
-from SPTOVZ.schemas.session import StartTestRequest, StartTestResponse
+from SPTOVZ.schemas.session import StartTestRequest, StartTestResponse, SubmitAnswersRequest
 from SPTOVZ.utils.test_selector import select_test_code
+from SPTOVZ.utils.scoring import compute_result
 
 router = APIRouter(prefix="", tags=["testing"])
 
@@ -59,3 +60,40 @@ def start_test(payload: StartTestRequest, db: Session = Depends(get_db)):
         form_type=str(passport.version),
         questions=content.questions,
     )
+
+@router.post("/submit-answers")
+def submit_answers(payload: SubmitAnswersRequest, db: Session = Depends(get_db)):
+    session = db.query(TestSession).get(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.finished_at:
+        raise HTTPException(status_code=400, detail="Session already finished")
+
+    # Определяем какой тест проходил пользователь (по тем же правилам)
+    key = session.key
+    education_type = None
+    if key and key.group and key.group.class_ and key.group.class_.psychologist:
+        education_type = key.group.class_.psychologist.education_type
+    if not education_type:
+        raise HTTPException(status_code=400, detail="У психолога не задан тип учреждения")
+
+    test_code = select_test_code(education_type, session.diagnosis, session.gender)
+    passport = db.get(TestPassport, test_code)
+    content = db.get(TestContent, test_code)
+    if not passport or not content:
+        raise HTTPException(status_code=500, detail=f"Тест {test_code} не найден. Импортируй каталог тестов.")
+
+    answers_dict = {a.question_id: a.value for a in payload.answers}
+
+    try:
+        result = compute_result(answers_dict, content.questions, content.scoring)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    session.answers = answers_dict
+    session.result = result
+    session.finished_at = datetime.utcnow()
+    db.commit()
+    db.refresh(session)
+
+    return {"session_id": session.id, "result": result}

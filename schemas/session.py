@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, List, Literal
 
 class StartTestRequest(BaseModel):
@@ -14,6 +14,10 @@ class StartTestResponse(BaseModel):
     form_type: str
     questions: List[str] = []
 
+class AnswerItem(BaseModel):
+    question_id: str
+    value: int = Field(ge=1, le=10, description="Оценка 1..10")
+
 class SubmitAnswersRequest(BaseModel):
     session_id: str
-    answers: List[Any]
+    answers: List[AnswerItem]
