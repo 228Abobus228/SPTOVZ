@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from database import Base
+from SPTOVZ.database import Base
 from datetime import datetime
 
 class TestSession(Base):

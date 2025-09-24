@@ -3,10 +3,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
-from database import get_db
-from models.user import User
-from schemas.user import UserCreate, UserResponse
-from utils.auth import get_password_hash, verify_password
+from SPTOVZ.database import get_db
+from SPTOVZ.models.user import User
+from SPTOVZ.schemas.user import UserCreate, UserResponse
+from SPTOVZ.utils.auth import get_password_hash, verify_password
 
 router = APIRouter(prefix="", tags=["auth"])
 

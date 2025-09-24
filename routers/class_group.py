@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
-from database import get_db
-from models.class_group import Class, Group, Key
-from schemas.class_group import (
+from SPTOVZ.database import get_db
+from SPTOVZ.models.class_group import Class, Group, Key
+from SPTOVZ.schemas.class_group import (
     ClassCreate, ClassOut,
     GroupCreate, GroupOut,
     GenerateKeysRequest, KeyOut
 )
+
 
 router = APIRouter(prefix="", tags=["structure"])
 

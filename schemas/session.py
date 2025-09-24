@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from typing import Any, List
+from typing import Any, List, Literal
 
 class StartTestRequest(BaseModel):
     code: str
     age: int
     gender: str
-    diagnosis: str | None = None
+    # allowed: 'hearing' | 'vision' | 'motor'
+    diagnosis: Literal["hearing", "vision", "motor"] = Field(..., description="Форма нарушения")
 
 class StartTestResponse(BaseModel):
     session_id: str

@@ -1,21 +1,26 @@
 import os
-from sqlalchemy.orm import Session
-from dotenv import load_dotenv
+from pathlib import Path
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
 
-# Загрузка переменных из .env
-load_dotenv()
+# Загружаем .env, лежащий РЯДОМ с этим файлом (важно при запуске из другого каталога)
+load_dotenv(Path(__file__).with_name(".env"))
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
-# Функция-зависимость для FastAPI
-def get_db() -> Session:
+# Фолбэк на локальную SQLite, если переменная не задана
+if not DATABASE_URL or not DATABASE_URL.strip():
+    db_path = Path(__file__).with_name("app.db")
+    DATABASE_URL = f"sqlite:///{db_path}"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
     db = SessionLocal()
     try:
         yield db

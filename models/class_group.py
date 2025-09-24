@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from database import Base
+from SPTOVZ.database import Base
 
 class Class(Base):
     __tablename__ = "classes"

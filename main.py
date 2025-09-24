@@ -1,8 +1,9 @@
 from fastapi import FastAPI
-from database import Base, engine
-from routers import auth as auth_router
-from routers import class_group as class_group_router
-from routers import session as session_router
+from SPTOVZ.database import Base, engine
+from SPTOVZ.routers import auth as auth_router
+from SPTOVZ.routers import class_group as class_group_router
+from SPTOVZ.routers import session as session_router
+
 
 app = FastAPI(title="СПТ ОВЗ API")
 
