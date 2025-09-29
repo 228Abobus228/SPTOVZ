@@ -1,0 +1,21 @@
+# Порог срабатывания ЛЖ по сумме «сырых» баллов
+threshold:
+  A: 38
+  B: 39
+  C: 38
+
+# «на 0,23» читаем как снижение на 23%:
+# скорректированное = исходное * (1 - coeff)
+coeff:
+  A:
+    hearing:  { female: 0.23, male: 0.23 }
+    vision:   { female: 0.30, male: 0.30 }
+    motor:    { female: 0.38, male: 0.38 }
+  B:
+    hearing:  { female: 0.17, male: 0.17 }
+    vision:   { female: 0.15, male: 0.15 }
+    motor:    { female: 0.25, male: 0.25 }
+  C:
+    hearing:  { female: 0.18, male: 0.18 }
+    vision:   { female: 0.35, male: 0.35 }
+    motor:    { female: 0.32, male: 0.32 }
