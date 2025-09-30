@@ -3,6 +3,7 @@ from pydantic import BaseModel
 class ClassCreate(BaseModel):
     name: str
     psychologist_id: str
+    education_type: Literal["school", "college", "university"]
 
 class ClassOut(BaseModel):
     id: str

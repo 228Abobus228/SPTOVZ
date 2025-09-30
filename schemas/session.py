@@ -4,7 +4,6 @@ from typing import Any, List, Literal
 class StartTestRequest(BaseModel):
     code: str
     age: int
-    gender: str
     gender: Literal["male", "female"]
     diagnosis: Literal["hearing", "vision", "motor"]
 

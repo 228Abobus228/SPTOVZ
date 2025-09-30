@@ -16,7 +16,7 @@ router = APIRouter(prefix="", tags=["structure"])
 # Классы
 @router.post("/classes", response_model=ClassOut)
 def create_class(payload: ClassCreate, db: Session = Depends(get_db)):
-    cls = Class(id=str(uuid4()), name=payload.name, psychologist_id=payload.psychologist_id)
+    cls = Class(id=str(uuid4()), name=payload.name, education_type=payload.education_type, psychologist_id=payload.psychologist_id)
     db.add(cls)
     db.commit()
     db.refresh(cls)

@@ -162,10 +162,7 @@ def submit_answers(payload: SubmitAnswersRequest, db: Session = Depends(get_db))
             impairment=impairment,
             gender=_normalize(session.gender or "female"),  # "female"|"male"
         )
-        try:
-            computed = compute_emspt(db, profile, answers_map)
-        except Exception as e:
-            computed = {"error": f"Ошибка расчёта: {e!s}"}
+        computed = compute_emspt(answers_map, profile)
 
     session.result = computed
     db.add(session)
