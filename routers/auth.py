@@ -8,8 +8,32 @@ from SPTOVZ.models.user import User
 from SPTOVZ.models.institution import Institution
 from SPTOVZ.schemas.user import UserCreate, UserResponse
 from SPTOVZ.utils.auth import get_password_hash, verify_password
+from SPTOVZ.utils.auth import get_current_user
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
+from SPTOVZ.database import get_db
+from SPTOVZ.models.user import User
+from SPTOVZ.models.institution import Institution
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 router = APIRouter(prefix="", tags=["auth"])
+
+@router.get("/me")
+def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """
+    Возвращает профиль текущего пользователя по токену (user.id).
+    """
+    user = db.query(User).filter(User.id == token).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    institution = db.query(Institution).filter(Institution.id == user.institution_id).first()
+
+    return {
+        "email": user.email,
+        "institution_name": institution.name if institution else None,
+        "education_type": institution.education_type if institution else None,
+    }
 
 @router.post("/register", response_model=UserResponse)
 def register(payload: UserCreate, db: Session = Depends(get_db)):

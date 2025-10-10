@@ -2,46 +2,76 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>СПТ ОВЗ — Админпанель</title>
+  <title>СПТ ОВЗ — Админ-панель</title>
   <style>
     body { font-family: sans-serif; margin: 40px; max-width: 800px; }
     h1 { color: #004477; }
-    input, select { padding: 4px; }
-    button { margin-top: 10px; padding: 6px 15px; }
+    input, select { padding: 4px; margin: 4px 0; }
+    button { margin-top: 10px; padding: 6px 15px; cursor: pointer; }
     .hidden { display: none; }
+    #classes, #codes { margin-top: 15px; }
+    hr { margin: 30px 0; }
   </style>
 </head>
 <body>
   <h1>Админ-панель СПТ ОВЗ</h1>
 
+  <!-- Авторизация -->
   <div id="login">
     <h3>Авторизация</h3>
-    <input id="email" placeholder="Email" type="email"><br><br>
-    <input id="password" placeholder="Пароль" type="password"><br><br>
+    <input id="email" placeholder="Email" type="email"><br>
+    <input id="password" placeholder="Пароль" type="password"><br>
     <button onclick="login()">Войти</button>
   </div>
 
+  <!-- Панель после входа -->
   <div id="panel" class="hidden">
+    <h3>Здравствуйте, <span id="user-email"></span></h3>
+    <p><b>Учреждение:</b> <span id="institution-name"></span>
+       (<span id="institution-type"></span>)</p>
+    <hr>
+
+    <!-- Создание класса -->
     <h3>Создание класса</h3>
-    <label>Тип учреждения:
-      <select id="edu-type">
-        <option value="school">Школа</option>
-        <option value="college">Колледж</option>
-        <option value="university">ВУЗ</option>
-      </select>
-    </label><br><br>
-    <input id="class-name" placeholder="Название класса"><br><br>
-    <button onclick="createClass()">Создать</button>
+    <input id="class-name" placeholder="Название класса"><br>
+    <button onclick="createClass()">Создать класс</button>
 
-    <h3>Создание кода доступа</h3>
-    <input id="group-name" placeholder="Название группы"><br><br>
-    <button onclick="createKey()">Создать код</button>
+    <!-- Список классов -->
+    <div id="classes"></div>
 
+    <hr>
+    <!-- Генерация кодов -->
+    <h3>Создание кодов тестирования</h3>
+    <label>Выберите класс:
+      <select id="class-select"></select>
+    </label><br>
+    <label>Количество кодов:
+      <input id="count" type="number" value="1" min="1" max="100">
+    </label><br>
+    <button onclick="generateKeys()">Создать коды</button>
     <div id="codes"></div>
   </div>
 
   <script>
     let token = null;
+    let classes = [];
+
+    async function register() {
+      const payload = {
+        email: document.getElementById('reg-email').value,
+        password: document.getElementById('reg-password').value,
+        institution_name: document.getElementById('reg-institution').value,
+        education_type: document.getElementById('reg-type').value
+      };
+      const resp = await fetch('/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (resp.ok) alert('Регистрация успешна! Теперь войдите.');
+      else alert('Ошибка: ' + (data.detail || JSON.stringify(data)));
+    }
 
     async function login() {
       const form = new URLSearchParams();
@@ -54,38 +84,70 @@
         body: form
       });
       const data = await resp.json();
-      if (!resp.ok) return alert('Ошибка входа');
+      if (!resp.ok) return alert('Ошибка входа: ' + (data.detail || ''));
       token = data.access_token;
+
+      document.getElementById('user-email').innerText = document.getElementById('email').value;
       document.getElementById('login').classList.add('hidden');
       document.getElementById('panel').classList.remove('hidden');
+
+      await loadProfile();
+      await loadClasses();
+    }
+
+    async function loadProfile() {
+      const resp = await fetch('/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      const data = await resp.json();
+      if (!resp.ok) return alert('Ошибка профиля: ' + data.detail);
+      document.getElementById('institution-name').innerText = data.institution_name;
+      document.getElementById('institution-type').innerText =
+        data.education_type === 'school' ? 'Школа (форма А)' :
+        data.education_type === 'college' ? 'Колледж (форма B)' :
+        'ВУЗ (форма C)';
     }
 
     async function createClass() {
-      const payload = {
-        name: document.getElementById('class-name').value,
-        education_type: document.getElementById('edu-type').value
-      };
+      const name = document.getElementById('class-name').value.trim();
+      if (!name) return alert('Введите название класса');
       const resp = await fetch('/class/create', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ name })
       });
       const data = await resp.json();
-      if (resp.ok) alert('Класс создан: ' + data.name);
-      else alert('Ошибка: ' + data.detail);
+      if (resp.ok) {
+        alert('Класс создан: ' + data.name);
+        document.getElementById('class-name').value = '';
+        await loadClasses();
+      } else alert('Ошибка: ' + data.detail);
     }
 
-    async function createKey() {
-      const payload = { group_name: document.getElementById('group-name').value };
-      const resp = await fetch('/key/create', {
+    async function loadClasses() {
+      const resp = await fetch('/class/my', { headers: { 'Authorization': 'Bearer ' + token } });
+      const data = await resp.json();
+      if (!resp.ok) return alert('Ошибка: ' + data.detail);
+      classes = data;
+      const select = document.getElementById('class-select');
+      select.innerHTML = data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      const div = document.getElementById('classes');
+      div.innerHTML = '<h4>Мои классы:</h4>' +
+        data.map(c => `<div>• ${c.name} (${c.education_type})</div>`).join('');
+    }
+
+    async function generateKeys() {
+      const classId = document.getElementById('class-select').value;
+      const count = parseInt(document.getElementById('count').value);
+      const payload = { class_id: classId, count: count };
+      const resp = await fetch('/class/keys/generate', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
         body: JSON.stringify(payload)
       });
       const data = await resp.json();
-      if (resp.ok) {
-        document.getElementById('codes').innerHTML += `<p>Создан код: <b>${data.code}</b></p>`;
-      } else alert('Ошибка: ' + data.detail);
+      if (!resp.ok) return alert('Ошибка: ' + data.detail);
+      const div = document.getElementById('codes');
+      div.innerHTML = '<h4>Созданные коды:</h4>' +
+        data.map(k => `<div>Код: <b>${k.code}</b> (форма ${k.form_type})</div>`).join('');
     }
   </script>
 </body>

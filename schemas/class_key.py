@@ -9,7 +9,7 @@ class ClassOut(BaseModel):
     name: str
     education_type: Literal["school", "college", "university"]
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class KeyGenerateRequest(BaseModel):
     class_id: str
