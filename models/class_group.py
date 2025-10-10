@@ -24,15 +24,14 @@ class Class(Base):
 class Key(Base):
     __tablename__ = "keys"
 
-    id = Column(String, primary_key=True, index=True)
-    code = Column(String, unique=True, index=True, nullable=False)
-    used = Column(Boolean, default=False, nullable=False)
+    id = Column(String, primary_key=True)
+    code = Column(String, unique=True, nullable=False)
+    used = Column(Boolean, default=False)
 
-    class_id = Column(String, ForeignKey("classes.id"), nullable=False)
+    class_id = Column(String, ForeignKey("classes.id"))
     class_ = relationship("Class", back_populates="keys")
 
-    # «замораживаем» параметры в момент генерации, чтобы потом старт по коду
-    education_type = Column(String, nullable=False)  # school|college|university
-    form_type = Column(String, nullable=False)       # A|B|C
+    education_type = Column(String, nullable=False)   # school | college | university
+    form_type = Column(String, nullable=False)         # A | B | C
 
-    sessions = relationship("TestSession", back_populates="key", cascade="all, delete-orphan")
+    sessions = relationship("TestSession", back_populates="key")

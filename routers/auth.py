@@ -3,6 +3,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from SPTOVZ.database import get_db
+from SPTOVZ.models.user import User
+from SPTOVZ.models.institution import Institution
+from SPTOVZ.utils.auth import verify_password
+
 from SPTOVZ.database import get_db
 from SPTOVZ.models.user import User
 from SPTOVZ.models.institution import Institution
@@ -16,12 +24,12 @@ from SPTOVZ.models.user import User
 from SPTOVZ.models.institution import Institution
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-router = APIRouter(prefix="", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 @router.get("/me")
-def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """
-    Возвращает профиль текущего пользователя по токену (user.id).
+    Возвращает профиль пользователя по токену (user.id)
     """
     user = db.query(User).filter(User.id == token).first()
     if not user:
@@ -32,8 +40,9 @@ def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     return {
         "email": user.email,
         "institution_name": institution.name if institution else None,
-        "education_type": institution.education_type if institution else None,
+        "education_type": institution.education_type if institution else None
     }
+
 
 @router.post("/register", response_model=UserResponse)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
@@ -58,7 +67,11 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/token")
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """
+    Упрощённая авторизация: токен = id пользователя.
+    """
     user = db.query(User).filter(User.email == form.username).first()
     if not user or not verify_password(form.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный логин или пароль")
+
     return {"access_token": user.id, "token_type": "bearer"}
