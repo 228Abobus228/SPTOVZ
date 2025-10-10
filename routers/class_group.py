@@ -89,9 +89,12 @@ def generate_keys(
     type_map = {
         "school": "A",
         "college": "B",
-        "university": "C"
+        "university": "C",
+        "a": "A",
+        "b": "B",
+        "c": "C"
     }
-    form_type = type_map.get(institution.education_type)
+    form_type = type_map.get(institution.education_type.lower())
     if not form_type:
         raise HTTPException(status_code=400, detail="Неизвестный тип учреждения")
 
@@ -113,3 +116,16 @@ def generate_keys(
     db.commit()
 
     return {"generated": new_keys, "form": form_type, "education_type": institution.education_type}
+
+@router.post("/keys/generate")
+def generate_keys_alias(
+    class_id: str,
+    count: int = 1,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Обёртка для старого пути /class/keys/generate.
+    Делает то же самое, что /classes/generate-keys.
+    """
+    return generate_keys(class_id=class_id, count=count, db=db, user=user)
