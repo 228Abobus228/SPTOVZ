@@ -138,7 +138,7 @@
       const classId = document.getElementById('class-select').value;
       const count = parseInt(document.getElementById('count').value);
       const payload = { class_id: classId, count: count };
-      const resp = await fetch('/class/keys/generate', {
+      const resp = await fetch(`/class/keys/generate?class_id=${classId}&count=${count}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
         body: JSON.stringify(payload)
