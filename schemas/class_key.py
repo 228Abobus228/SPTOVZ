@@ -21,4 +21,4 @@ class KeyOut(BaseModel):
     form_type: Literal["A", "B", "C"]
     education_type: Literal["school", "college", "university"]
     class Config:
-        orm_mode = True
+        from_attributes = True
