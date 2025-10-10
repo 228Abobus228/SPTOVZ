@@ -118,6 +118,28 @@ def generate_keys(
     return _generate_keys_logic(db, user, class_id, count)
 
 
+@router.get("/keys")
+def list_keys(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Возвращает все коды, созданные этим учителем"""
+    classes = db.query(Class).filter(Class.teacher_id == user.id).all()
+    class_ids = [c.id for c in classes]
+
+    keys = db.query(Key).filter(Key.class_id.in_(class_ids)).all()
+
+    return [
+        {
+            "code": k.code,
+            "class_name": next((c.name for c in classes if c.id == k.class_id), "—"),
+            "form": k.form_type,
+            "used": k.used,
+        }
+        for k in keys
+    ]
+
+
 # --- Старый путь для совместимости ---
 @router.post("/keys/generate")
 def generate_keys_alias(

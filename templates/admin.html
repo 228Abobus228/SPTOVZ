@@ -50,11 +50,39 @@
     </label><br>
     <button onclick="generateKeys()">Создать коды</button>
     <div id="codes"></div>
+    <hr>
+    <h3>Список кодов</h3>
+    <button onclick="loadKeys()">Обновить</button>
+    <div id="keys-list"></div>
   </div>
 
   <script>
     let token = null;
     let classes = [];
+
+    async function loadKeys() {
+  const resp = await fetch('/class/keys', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const data = await resp.json();
+  if (!resp.ok) return alert('Ошибка: ' + (data.detail || JSON.stringify(data)));
+
+  const div = document.getElementById('keys-list');
+  if (data.length === 0) {
+    div.innerHTML = '<p>Коды ещё не созданы.</p>';
+    return;
+  }
+
+  div.innerHTML = data.map(k => `
+    <div style="margin-bottom:4px;">
+      <b>${k.code}</b> (${k.class_name}, форма ${k.form})
+      <span style="color:${k.used ? 'green' : 'red'}; font-weight:bold;">
+        ${k.used ? 'пройден' : 'не пройден'}
+      </span>
+    </div>
+  `).join('');
+}
+
 
     async function register() {
       const payload = {
@@ -148,6 +176,8 @@
       const div = document.getElementById('codes');
       div.innerHTML = '<h4>Созданные коды:</h4>' +
         data.map(k => `<div>Код: <b>${k.code}</b> (форма ${k.form_type})</div>`).join('');
+      await loadKeys(); // чтобы список обновился после создания
+
     }
   </script>
 </body>

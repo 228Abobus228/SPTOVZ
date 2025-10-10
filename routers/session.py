@@ -21,46 +21,62 @@ def _norm(s: str) -> str:
 
 @router.post("/start-test", response_model=StartTestResponse)
 def start_test(payload: StartTestRequest, db: Session = Depends(get_db)) -> StartTestResponse:
+    # 1️⃣ Проверяем наличие кода
     key: Key | None = db.query(Key).filter(Key.code == payload.code).first()
     if not key:
         raise HTTPException(status_code=404, detail="Неверный код доступа")
-    if key.used:
-        raise HTTPException(status_code=400, detail="Этот код уже использован")
 
+    # 2️⃣ Проверяем — если тест уже был завершён
+    if key.used:
+        raise HTTPException(status_code=400, detail="Этот тест уже пройден.")
+
+    # 3️⃣ Если ранее тест начинался, но не завершён — очистим старые данные
+    old_session = db.query(TestSession).filter(TestSession.key_id == key.id).first()
+    if old_session:
+        old_session.answers = None
+        old_session.result = None
+        db.commit()
+
+    # 4️⃣ Проверяем класс и тип учреждения
     cls: Class | None = db.get(Class, key.class_id)
     if not cls or not cls.education_type:
         raise HTTPException(status_code=400, detail="Класс/учреждение не определены")
-    institution = cls.education_type                      # school|college|university
-    impairment = _norm(payload.diagnosis)                 # hearing|vision|motor
 
+    institution = cls.education_type  # school|college|university
+    impairment = _norm(payload.diagnosis)  # hearing|vision|motor
+
+    # 5️⃣ Подбираем тест
     try:
         passport, content = select_test(db, institution=institution, impairment=impairment)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+    # 6️⃣ Создаём новую сессию
     session = TestSession(
         id=str(uuid4()),
         key_id=key.id,
         age=payload.age,
         gender=_norm(payload.gender),
         diagnosis=impairment,
-        form_type=key.form_type,          # зафиксировано в ключе при генерации
-        test_name=passport.id,            # meta.code
+        form_type=key.form_type,
+        test_name=passport.id,
         started_at=datetime.utcnow(),
         answers=None,
         result=None,
     )
-    key.used = True
+
     db.add(session)
     db.commit()
     db.refresh(session)
 
+    # 7️⃣ Возвращаем данные теста
     return StartTestResponse(
         session_id=session.id,
         test_name=passport.title,
         form_type=key.form_type,
         questions=content.questions,
     )
+
 
 @router.post("/submit-answers")
 def submit_answers(payload: Dict[str, Any], db: Session = Depends(get_db)):
@@ -97,6 +113,9 @@ def submit_answers(payload: Dict[str, Any], db: Session = Depends(get_db)):
     )
 
     session.result = computed
+    key = db.query(Key).filter(Key.id == session.key_id).first()
+    if key:
+        key.used = True
     db.commit()
 
     return {
