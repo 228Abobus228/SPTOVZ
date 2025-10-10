@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List
 from uuid import uuid4
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -12,35 +12,28 @@ from SPTOVZ.database import get_db
 from SPTOVZ.models.class_group import Key, Group, Class
 from SPTOVZ.models.session import TestSession
 from SPTOVZ.models.testbank import TestPassport, TestContent
-from SPTOVZ.schemas.session import StartTestRequest, StartTestResponse, SubmitAnswersRequest
+from SPTOVZ.schemas.session import StartTestRequest, StartTestResponse
 from SPTOVZ.utils.test_selector import select_test
-
-# (опционально) если уже сделал движок расчётов — подключим
-try:
-    from SPTOVZ.utils.emspt_engine import compute_emspt, Profile  # noqa: F401
-except Exception:
-    compute_emspt = None
-    Profile = None  # type: ignore
-
-router = APIRouter(tags=["testing"])
+from SPTOVZ.utils.emspt_engine import compute_emspt, Profile
 
 
-# ---------------------------
-# helpers
-# ---------------------------
+router = APIRouter(prefix="/session", tags=["Session"])
+
+
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
 
 def _normalize(s: str) -> str:
     return (s or "").strip().lower()
 
 
 def _get_institution_from_key(db: Session, key: Key) -> str:
-    """
-    Получаем тип учреждения через Key -> Group -> Class.
-    У класса должно быть поле `education_type` со значениями:
-    'school' | 'college' | 'university'.
-    """
+    """Получаем тип учреждения через Key → Group → Class."""
     group = db.get(Group, key.group_id) if key.group_id else None
-    cls = group.class_ if group else (db.get(Class, key.class_id) if getattr(key, "class_id", None) else None)
+    cls = group.class_ if group else (
+        db.get(Class, key.class_id) if getattr(key, "class_id", None) else None
+    )
 
     if not cls:
         raise HTTPException(status_code=400, detail="Ключ не привязан к классу/группе")
@@ -48,19 +41,18 @@ def _get_institution_from_key(db: Session, key: Key) -> str:
     if not hasattr(cls, "education_type") or not getattr(cls, "education_type"):
         raise HTTPException(
             status_code=500,
-            detail="У класса отсутствует поле education_type. "
-                   "Добавь его в модель Class (school|college|university) и перегенерируй БД."
+            detail="У класса отсутствует поле education_type (school|college|university)",
         )
 
-    inst = _normalize(cls.education_type)  # type: ignore[attr-defined]
+    inst = _normalize(cls.education_type)
     if inst not in {"school", "college", "university"}:
         raise HTTPException(status_code=400, detail=f"Некорректный education_type='{inst}' у класса")
     return inst
 
 
-# ---------------------------
+# ---------------------------------------------------------------------
 # /start-test
-# ---------------------------
+# ---------------------------------------------------------------------
 
 @router.post("/start-test", response_model=StartTestResponse)
 def start_test(payload: StartTestRequest, db: Session = Depends(get_db)) -> StartTestResponse:
@@ -71,108 +63,113 @@ def start_test(payload: StartTestRequest, db: Session = Depends(get_db)) -> Star
     if getattr(key, "used", False):
         raise HTTPException(status_code=400, detail="Этот код уже использован")
 
-    # 2) Подготавливаем выбор теста
-    institution = _get_institution_from_key(db, key)          # school|college|university
-    impairment = _normalize(payload.diagnosis)                 # hearing|vision|motor
+    # 2) Определяем параметры выбора теста
+    institution = _get_institution_from_key(db, key)
+    impairment = _normalize(payload.diagnosis)
 
-    # 3) Выбираем тест (пол НЕ участвует)
+    # 3) Выбираем тест
     try:
         passport, content = select_test(db, institution=institution, impairment=impairment)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    # 4) Создаём сессию
+    # 4) Создаём сессию теста
     session = TestSession(
         id=str(uuid4()),
         key_id=key.id,
         age=payload.age,
-        gender=_normalize(payload.gender),     # сохраняем для расчётов, но НЕ для выбора теста
+        gender=_normalize(payload.gender),
         diagnosis=impairment,
-        form_type=passport.form,               # "A" | "B" | "C"
-        test_name=passport.title,
+        form_type=passport.form,   # "A" | "B" | "C"
+        test_name=passport.id,     # <-- важно: использовать meta.code, не title
         started_at=datetime.utcnow(),
         answers=None,
         result=None,
     )
     if hasattr(key, "used"):
-        key.used = True  # помечаем ключ использованным
+        key.used = True
 
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    # 5) Отдаём вопросы (это список dict из TestContent.questions)
+    # 5) Отдаём клиенту информацию о тесте
     return StartTestResponse(
         session_id=session.id,
         test_name=passport.title,
         form_type=passport.form,
-        questions=content.questions,  # List[dict]
+        questions=content.questions,
     )
 
 
-# ---------------------------
+# ---------------------------------------------------------------------
 # /submit-answers
-# ---------------------------
+# ---------------------------------------------------------------------
 
 @router.post("/submit-answers")
-def submit_answers(payload: SubmitAnswersRequest, db: Session = Depends(get_db)) -> Dict[str, Any]:
-    # 1) Сессия
-    session: TestSession | None = db.get(TestSession, payload.session_id)
+def submit_answers(payload: Dict[str, Any], db: Session = Depends(get_db)):
+    """
+    Принимает ответы участника и рассчитывает результат ЕМ СПТ.
+    Формат:
+    {
+        "session_id": "...",
+        "answers": [{"id": "1", "value": 3}, ...]
+    }
+    """
+    session_id = payload.get("session_id")
+    answers_raw = payload.get("answers")
+
+    if not session_id or not answers_raw:
+        raise HTTPException(status_code=400, detail="session_id и answers обязательны")
+
+    session = db.get(TestSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Сессия не найдена")
-    if session.finished_at:
-        raise HTTPException(status_code=400, detail="Сессия уже завершена")
 
-    # 2) Определяем тест повторно (защитно на случай обновлений)
-    key: Key | None = db.get(Key, session.key_id) if session.key_id else None
-    if not key:
-        raise HTTPException(status_code=400, detail="Сессия привязана к несуществующему ключу")
-
-    institution = _get_institution_from_key(db, key)
-    impairment = _normalize(session.diagnosis)
-
-    try:
-        passport, content = select_test(db, institution=institution, impairment=impairment)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    # 3) Приводим ответы к виду {question_id: value}
-    q_order = [q.get("id") for q in (content.questions or [])]
-    if all(isinstance(x, (int, float)) for x in payload.answers):
-        if len(payload.answers) != len(q_order):
-            raise HTTPException(status_code=400, detail="Количество ответов не совпадает с количеством вопросов")
-        answers_map = {qid: int(value) for qid, value in zip(q_order, payload.answers)}
+    # --- Преобразуем ответы в словарь {id: value} ---
+    if isinstance(answers_raw, list):
+        if all(isinstance(x, dict) for x in answers_raw):
+            answers_map = {str(a["id"]): int(a["value"]) for a in answers_raw}
+        else:
+            answers_map = {str(i + 1): int(v) for i, v in enumerate(answers_raw)}
     else:
-        tmp: Dict[Any, Any] = {}
-        for item in payload.answers:  # ожидаем {"id": ..., "value": ...}
-            if not isinstance(item, dict) or "id" not in item or "value" not in item:
-                raise HTTPException(status_code=400, detail="Неверный формат ответа")
-            tmp[item["id"]] = int(item["value"])
-        answers_map = tmp
+        raise HTTPException(status_code=400, detail="Неверный формат answers")
 
-    # 4) Сохраняем сырые ответы
-    session.answers = answers_map  # type: ignore[assignment]
-    session.finished_at = datetime.utcnow()
-
-    # 5) Считаем результат, если движок расчётов уже есть
-    computed: Dict[str, Any] | None = None
-    if compute_emspt and Profile:
-        profile = Profile(
-            form=passport.form,
-            impairment=impairment,
-            gender=_normalize(session.gender or "female"),  # "female"|"male"
-        )
-        computed = compute_emspt(answers_map, profile)
-
-    session.result = computed
-    db.add(session)
+    # --- Сохраняем ответы ---
+    session.answers = answers_map
     db.commit()
-    db.refresh(session)
+
+    # --- Подгружаем контент теста ---
+    content = db.get(TestContent, session.test_name)
+    if not content:
+        raise HTTPException(status_code=500, detail=f"Контент теста '{session.test_name}' не найден")
+
+    # --- Формируем профиль участника ---
+    profile = Profile(
+        form=session.form_type,
+        impairment=session.diagnosis,  # исправлено
+        gender=session.gender,
+    )
+
+    # --- Расчёт результатов ---
+    try:
+        computed = compute_emspt(
+            answers_map=answers_map,
+            profile=profile,
+            questions=content.questions,
+            scoring_cfg=content.scoring,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка расчёта результатов: {e}")
+
+    # --- Сохраняем результат ---
+    session.result = computed
+    db.commit()
 
     return {
         "session_id": session.id,
         "saved": True,
-        "questions": len(q_order),
-        "computed": computed is not None,
+        "questions": len(answers_map),
+        "computed": True,
         "result": computed,
     }

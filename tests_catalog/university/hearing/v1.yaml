@@ -1,7 +1,7 @@
 meta:
   institution: university            # school | college | university
   impairment: hearing            # hearing | vision | motor
-  form: "B"                  # male | female
+  form: "C"                  # male | female
   code: UNI_HEAR_V1           # ДОЛЖЕН совпадать с кодом из селектора
   version: 1
   title: "2.3.2. ЕМ СПТ форма В (слабослышащие)"
