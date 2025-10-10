@@ -60,23 +60,12 @@ def my_classes(db: Session = Depends(get_db), me: User = Depends(get_current_use
     classes = db.query(Class).filter(Class.teacher_id == me.id).all()
     return [ClassOut(id=c.id, name=c.name, education_type=c.education_type) for c in classes]
 
-@router.post("/generate-keys")
-def generate_keys(
-    class_id: str,
-    count: int = Query(1, ge=1, le=100),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
-):
-    """
-    Создаёт коды тестирования для указанного класса.
-    Автоматически подтягивает форму A/B/C исходя из учреждения пользователя.
-    """
+def _generate_keys_logic(db: Session, user: User, class_id: str, count: int):
     # Проверяем, что класс принадлежит этому пользователю
     target_class = db.query(Class).filter(
         Class.id == class_id,
         Class.teacher_id == user.id
     ).first()
-
     if not target_class:
         raise HTTPException(status_code=404, detail="Класс не найден")
 
@@ -117,6 +106,19 @@ def generate_keys(
 
     return {"generated": new_keys, "form": form_type, "education_type": institution.education_type}
 
+
+# --- Основной маршрут ---
+@router.post("/generate-keys")
+def generate_keys(
+    class_id: str,
+    count: int = Query(1, ge=1, le=100),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    return _generate_keys_logic(db, user, class_id, count)
+
+
+# --- Старый путь для совместимости ---
 @router.post("/keys/generate")
 def generate_keys_alias(
     class_id: str,
@@ -124,8 +126,4 @@ def generate_keys_alias(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    """
-    Обёртка для старого пути /class/keys/generate.
-    Делает то же самое, что /classes/generate-keys.
-    """
-    return generate_keys(class_id=class_id, count=count, db=db, user=user)
+    return _generate_keys_logic(db, user, class_id, count)
