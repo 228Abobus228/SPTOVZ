@@ -1,14 +1,15 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from typing import Literal
 
 class UserCreate(BaseModel):
-    email: str
+    email: EmailStr
     password: str
-    education_type: str | None = None
+    institution_name: str
+    education_type: Literal["school", "college", "university"]
 
 class UserResponse(BaseModel):
     id: str
-    email: str
-    education_type: str | None = None
-
+    email: EmailStr
+    institution_id: str
     class Config:
-        from_attributes = True  # Pydantic v2
+        orm_mode = True
