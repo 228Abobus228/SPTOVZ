@@ -7,8 +7,7 @@ class TestSession(Base):
     __tablename__ = "test_sessions"
 
     id = Column(String, primary_key=True, index=True)
-    key_id = Column(String, ForeignKey("keys.id"), nullable=False)
-    key = relationship("Key", back_populates="sessions")
+    key_id = Column(String, ForeignKey("keys.id"))
 
     age = Column(Integer, nullable=False)
     gender = Column(String, nullable=False)
