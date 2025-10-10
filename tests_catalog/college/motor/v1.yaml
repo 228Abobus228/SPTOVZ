@@ -1,7 +1,7 @@
 meta:
   institution: college            # school | college | university
   impairment: motor           # hearing | vision | motor
-  form: "B"                  # male | female
+  form: "C"                  # male | female
   code: COL_MOTOR_V1            # ДОЛЖЕН совпадать с кодом из селектора
   version: 1
   title: "2.2.3. ЕМ СПТ форма В (Нарушение моторных функций)"

@@ -1,7 +1,7 @@
 meta:
   institution: college            # school | college | university
   impairment: vision            # hearing | vision | motor
-  form: "B"                  # male | female
+  form: "A"                  # male | female
   code: COL_VISION_V1          # ДОЛЖЕН совпадать с кодом из селектора
   version: 1
   title: "2.2.2. ЕМ СПТ форма В (слабовидящие)"
