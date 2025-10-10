@@ -15,10 +15,11 @@ class TestPassport(Base):
     # Метаданные
     version = Column(Integer, nullable=False)
     title   = Column(String,  nullable=False)
+    form = Column(String, nullable=False)
     locale  = Column(String,  nullable=False, default="ru")
 
     __table_args__ = (
-        UniqueConstraint("institution", "impairment", "gender", "version", name="uq_test_quad"),
+        UniqueConstraint("institution", "impairment", "version", name="uq_test_quad"),
     )
 
 

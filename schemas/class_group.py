@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Literal
 
 class ClassCreate(BaseModel):
     name: str
