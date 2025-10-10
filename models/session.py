@@ -6,8 +6,9 @@ from datetime import datetime
 class TestSession(Base):
     __tablename__ = "test_sessions"
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, primary_key=True)
     key_id = Column(String, ForeignKey("keys.id"))
+    key = relationship("Key", back_populates="sessions")
 
     age = Column(Integer, nullable=False)
     gender = Column(String, nullable=False)

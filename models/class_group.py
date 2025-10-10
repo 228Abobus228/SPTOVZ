@@ -34,3 +34,5 @@ class Key(Base):
     # «замораживаем» параметры в момент генерации, чтобы потом старт по коду
     education_type = Column(String, nullable=False)  # school|college|university
     form_type = Column(String, nullable=False)       # A|B|C
+
+    sessions = relationship("TestSession", back_populates="key", cascade="all, delete-orphan")
