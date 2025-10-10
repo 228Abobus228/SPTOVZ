@@ -5,16 +5,16 @@ from SPTOVZ.database import Base
 class Class(Base):
     __tablename__ = "classes"
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
 
-    teacher_id = Column(String, ForeignKey("users.id"), nullable=False)
+    teacher_id = Column(String, ForeignKey("users.id"))
     teacher = relationship("User", back_populates="classes")
 
-    institution_id = Column(String, ForeignKey("institutions.id"), nullable=False)
-    institution = relationship("Institution")
+    institution_id = Column(String, ForeignKey("institutions.id"))
+    institution = relationship("Institution", back_populates="classes")
 
-    keys = relationship("Key", back_populates="class_", cascade="all, delete-orphan")
+    keys = relationship("Key", back_populates="class_")
 
     @property
     def education_type(self) -> str | None:

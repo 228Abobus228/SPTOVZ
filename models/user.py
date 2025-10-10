@@ -1,16 +1,22 @@
+# SPTOVZ/models/user.py
 from sqlalchemy import Column, String, ForeignKey
 from sqlalchemy.orm import relationship
 from SPTOVZ.database import Base
 
+
 class User(Base):
+    """
+    Пользователь (учитель / администратор учреждения)
+    """
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
+    id = Column(String, primary_key=True)
+    email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
 
-    # 1:1 — у учреждения один учитель
-    institution_id = Column(String, ForeignKey("institutions.id"), unique=True, nullable=False)
-    institution = relationship("Institution", backref="teacher", uselist=False)
+    # связь с учреждением
+    institution_id = Column(String, ForeignKey("institutions.id"), nullable=True)
+    institution = relationship("Institution", back_populates="user")
 
-    classes = relationship("Class", back_populates="teacher", cascade="all, delete-orphan")
+    # связь с классами, которые создаёт учитель
+    classes = relationship("Class", back_populates="teacher")
