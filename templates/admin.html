@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>СПТ ОВЗ — Админпанель</title>
+  <style>
+    body { font-family: sans-serif; margin: 40px; max-width: 800px; }
+    h1 { color: #004477; }
+    input, select { padding: 4px; }
+    button { margin-top: 10px; padding: 6px 15px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Админ-панель СПТ ОВЗ</h1>
+
+  <div id="login">
+    <h3>Авторизация</h3>
+    <input id="email" placeholder="Email" type="email"><br><br>
+    <input id="password" placeholder="Пароль" type="password"><br><br>
+    <button onclick="login()">Войти</button>
+  </div>
+
+  <div id="panel" class="hidden">
+    <h3>Создание класса</h3>
+    <label>Тип учреждения:
+      <select id="edu-type">
+        <option value="school">Школа</option>
+        <option value="college">Колледж</option>
+        <option value="university">ВУЗ</option>
+      </select>
+    </label><br><br>
+    <input id="class-name" placeholder="Название класса"><br><br>
+    <button onclick="createClass()">Создать</button>
+
+    <h3>Создание кода доступа</h3>
+    <input id="group-name" placeholder="Название группы"><br><br>
+    <button onclick="createKey()">Создать код</button>
+
+    <div id="codes"></div>
+  </div>
+
+  <script>
+    let token = null;
+
+    async function login() {
+      const form = new URLSearchParams();
+      form.append('username', document.getElementById('email').value);
+      form.append('password', document.getElementById('password').value);
+
+      const resp = await fetch('/token', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: form
+      });
+      const data = await resp.json();
+      if (!resp.ok) return alert('Ошибка входа');
+      token = data.access_token;
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('panel').classList.remove('hidden');
+    }
+
+    async function createClass() {
+      const payload = {
+        name: document.getElementById('class-name').value,
+        education_type: document.getElementById('edu-type').value
+      };
+      const resp = await fetch('/class/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (resp.ok) alert('Класс создан: ' + data.name);
+      else alert('Ошибка: ' + data.detail);
+    }
+
+    async function createKey() {
+      const payload = { group_name: document.getElementById('group-name').value };
+      const resp = await fetch('/key/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        document.getElementById('codes').innerHTML += `<p>Создан код: <b>${data.code}</b></p>`;
+      } else alert('Ошибка: ' + data.detail);
+    }
+  </script>
+</body>
+</html>
