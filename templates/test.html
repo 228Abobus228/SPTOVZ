@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>СПТ ОВЗ — тестирование</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; max-width: 800px; }
+        h1 { color: #0055aa; }
+        .question { margin: 15px 0; }
+        .question p { margin: 5px 0; font-weight: bold; }
+        button { margin-top: 20px; padding: 8px 20px; font-size: 16px; }
+        .result { margin-top: 40px; background: #f3f3f3; padding: 20px; border-radius: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<h1>Электронный модуль СПТ ОВЗ</h1>
+
+<div id="start">
+    <h2>Начало тестирования</h2>
+    <label>Ключ доступа: <input id="code" value="TEST123" /></label><br><br>
+    <label>Возраст: <input id="age" type="number" value="12" /></label><br><br>
+    <label>Пол:
+        <select id="gender">
+            <option value="male">Мужской</option>
+            <option value="female">Женский</option>
+        </select>
+    </label><br><br>
+    <label>Нарушение:
+        <select id="diagnosis">
+            <option value="hearing">Слух</option>
+            <option value="vision">Зрение</option>
+            <option value="motor">Моторика</option>
+        </select>
+    </label><br><br>
+    <button onclick="startTest()">Начать тест</button>
+</div>
+
+<div id="test" class="hidden">
+    <h2 id="test-title"></h2>
+    <form id="test-form"></form>
+    <button onclick="submitAnswers()">Отправить ответы</button>
+</div>
+
+<div id="result" class="hidden result"></div>
+
+<script>
+let sessionId = null;
+let questions = [];
+
+async function startTest() {
+    const payload = {
+        code: document.getElementById('code').value,
+        age: parseInt(document.getElementById('age').value),
+        gender: document.getElementById('gender').value,
+        diagnosis: document.getElementById('diagnosis').value
+    };
+
+    const resp = await fetch('/session/start-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+        alert('Ошибка: ' + (data.detail || JSON.stringify(data)));
+        return;
+    }
+
+    sessionId = data.session_id;
+    questions = data.questions;
+    document.getElementById('test-title').innerText = data.test_name;
+    const form = document.getElementById('test-form');
+    form.innerHTML = '';
+
+    questions.forEach(q => {
+        const div = document.createElement('div');
+        div.className = 'question';
+        div.innerHTML = `
+            <p>${q.id}. ${q.text}</p>
+            <label><input type="radio" name="q${q.id}" value="1">1</label>
+            <label><input type="radio" name="q${q.id}" value="2">2</label>
+            <label><input type="radio" name="q${q.id}" value="3">3</label>
+            <label><input type="radio" name="q${q.id}" value="4">4</label>
+            <label><input type="radio" name="q${q.id}" value="5">5</label>
+        `;
+        form.appendChild(div);
+    });
+
+    document.getElementById('start').classList.add('hidden');
+    document.getElementById('test').classList.remove('hidden');
+}
+
+async function submitAnswers() {
+    const form = document.getElementById('test-form');
+    const formData = new FormData(form);
+    const answers = [];
+
+    questions.forEach(q => {
+        const val = formData.get('q' + q.id);
+        if (val) answers.push({ id: q.id, value: parseInt(val) });
+    });
+
+    if (answers.length === 0) {
+        alert('Ответьте хотя бы на один вопрос!');
+        return;
+    }
+
+    const payload = { session_id: sessionId, answers };
+    const resp = await fetch('/session/submit-answers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+        alert('Ошибка: ' + (data.detail || JSON.stringify(data)));
+        return;
+    }
+
+    document.getElementById('test').classList.add('hidden');
+    document.getElementById('result').classList.remove('hidden');
+    document.getElementById('result').innerHTML = `
+        <h3>Результаты:</h3>
+        <p><b>IRP:</b> ${data.result.irp} (${data.result.irp_interval})</p>
+        <p><b>KVERIPO:</b> ${data.result.kveripo} (${data.result.kveripo_interval})</p>
+        <p><b>Шкалы:</b></p>
+        <pre>${JSON.stringify(data.result.scales, null, 2)}</pre>
+    `;
+}
+</script>
+</body>
+</html>

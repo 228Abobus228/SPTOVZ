@@ -1,12 +1,11 @@
-from fastapi import FastAPI
-from SPTOVZ.database import Base, engine
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
-# Важно: импортируем модели, чтобы SQLAlchemy "увидел" таблицы
-from SPTOVZ import models as _models  # noqa: F401
-from SPTOVZ.routers import session as session_router
-from SPTOVZ.routers import auth as auth_router
-from SPTOVZ.routers import class_group as class_group_router
-from SPTOVZ.routers import session as session_router
+from SPTOVZ.database import Base, engine
+from SPTOVZ import models
+from SPTOVZ.routers import session as session_router, class_group as class_router
 
 app = FastAPI(title="СПТ ОВЗ API")
 
@@ -18,6 +17,8 @@ app.include_router(auth_router.router)
 app.include_router(class_group_router.router)
 app.include_router(session_router.router)
 
-@app.get("/")
-def healthcheck():
-    return {"status": "ok"}
+templates = Jinja2Templates(directory="SPTOVZ/templates")
+
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request):
+    return templates.TemplateResponse("test.html", {"request": request})
