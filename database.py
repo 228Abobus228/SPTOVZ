@@ -16,7 +16,8 @@ if not DATABASE_URL or not DATABASE_URL.strip():
     DATABASE_URL = f"sqlite:///{db_path}"
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

@@ -2,19 +2,66 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Прохождение теста</title>
+  <title>СПТ ОВЗ — Тестирование</title>
   <style>
+    * { box-sizing: border-box; }
     body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f0f4ff, #e6ecff);
       font-family: "Segoe UI", sans-serif;
-      max-width: 700px;
-      margin: 40px auto;
-      text-align: center;
       color: #333;
     }
-    .question {
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 30px 40px;
+      max-width: 600px;
+      width: 90%;
+      text-align: center;
+      animation: fadeIn 0.5s ease;
+    }
+    h1 {
+      color: #003399;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 10px 0;
+      font-size: 1.1em;
+    }
+    input, select {
+      padding: 8px;
+      font-size: 1em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 80%;
+      margin-top: 4px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 10px;
+      background: #0055ff;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #003fcc; }
+
+    .hidden { display: none; }
+
+    /* Вопросы */
+    .question-text {
       font-size: 1.4em;
       margin-bottom: 30px;
-      min-height: 100px;
+      min-height: 80px;
     }
     .answers {
       display: grid;
@@ -38,61 +85,112 @@
       transform: scale(1.05);
     }
     #progress {
-      margin-top: 20px;
-      font-size: 1em;
-      color: #777;
+      margin-top: 15px;
+      color: #666;
     }
-    #finish {
-      display: none;
-      background: #28a745;
-      color: white;
-      padding: 15px 25px;
-      border-radius: 8px;
-      border: none;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-    #finish:hover {
-      background: #218838;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
 
-  <h2 id="test-title">Тестирование</h2>
-  <div id="question-container">
-    <div class="question" id="question-text"></div>
-    <div class="answers" id="answers"></div>
-    <div id="progress"></div>
+  <!-- Старт -->
+  <div id="start" class="card">
+    <h1>СПТ ОВЗ</h1>
+    <p><b>Начало тестирования</b></p>
+    <label>Код доступа: <input id="code" placeholder="Введите код" /></label>
+    <label>Возраст: <input id="age" type="number" /></label>
+    <label>Пол:
+      <select id="gender">
+        <option value="male">Мужской</option>
+        <option value="female">Женский</option>
+      </select>
+    </label>
+    <label>Нарушение:
+      <select id="diagnosis">
+        <option value="hearing">Слух</option>
+        <option value="vision">Зрение</option>
+        <option value="motor">Моторика</option>
+      </select>
+    </label>
+    <button onclick="startTest()">Начать тест</button>
   </div>
 
-  <button id="finish" onclick="finishTest()">Завершить тест</button>
+  <!-- Тест -->
+  <div id="test" class="card hidden">
+    <h2 id="test-title"></h2>
+    <div id="question-container">
+      <div id="question-text" class="question-text"></div>
+      <div id="answers" class="answers"></div>
+      <div id="progress"></div>
+    </div>
+    <button id="finish" class="hidden" onclick="submitAnswers()" style="background:#28a745;">Завершить тест</button>
+  </div>
+
+  <!-- Результат -->
+  <div id="result" class="card hidden">
+    <h2>Результаты</h2>
+    <p id="result-text"></p>
+  </div>
 
   <script>
-    const sessionId = localStorage.getItem('session_id');
-    const questions = JSON.parse(localStorage.getItem('questions') || '[]');
+    let sessionId = null;
+    let questions = [];
     let currentIndex = 0;
     const answers = [];
 
+    async function startTest() {
+      const payload = {
+        code: document.getElementById('code').value.trim(),
+        age: parseInt(document.getElementById('age').value),
+        gender: document.getElementById('gender').value,
+        diagnosis: document.getElementById('diagnosis').value
+      };
+
+      const resp = await fetch('/session/start-test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+
+      const data = await resp.json();
+      if (!resp.ok) return alert(data.detail || 'Ошибка при запуске теста');
+
+      sessionId = data.session_id;
+      questions = data.questions;
+
+      document.getElementById('start').classList.add('hidden');
+      document.getElementById('test').classList.remove('hidden');
+      document.getElementById('test-title').innerText = data.test_name;
+
+      showQuestion();
+    }
+
     function showQuestion() {
+      const finishBtn = document.getElementById('finish');
+      finishBtn.classList.add('hidden'); // всегда прячем перед показом вопроса
+
       if (currentIndex >= questions.length) {
-        document.getElementById('question-container').style.display = 'none';
-        document.getElementById('finish').style.display = 'inline-block';
+        // Все вопросы отвечены → показать кнопку завершения
+        document.getElementById('question-container').classList.add('hidden');
+        finishBtn.classList.remove('hidden');
         return;
       }
 
       const q = questions[currentIndex];
       document.getElementById('question-text').innerText = q.text;
-      const ansDiv = document.getElementById('answers');
-      ansDiv.innerHTML = '';
 
-      // создаем 10 больших кнопок
+      const answersDiv = document.getElementById('answers');
+      answersDiv.innerHTML = '';
+
       for (let i = 1; i <= 10; i++) {
         const btn = document.createElement('button');
         btn.innerText = i;
         btn.className = 'answer-btn';
         btn.onclick = () => selectAnswer(q.id, i);
-        ansDiv.appendChild(btn);
+        answersDiv.appendChild(btn);
       }
 
       document.getElementById('progress').innerText =
@@ -105,24 +203,22 @@
       showQuestion();
     }
 
-    async function finishTest() {
-      const payload = { session_id: sessionId, answers: answers };
+    async function submitAnswers() {
+      const payload = { session_id: sessionId, answers };
       const resp = await fetch('/session/submit-answers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
       });
-      const data = await resp.json();
-      if (!resp.ok) {
-        alert('Ошибка: ' + (data.detail || 'Не удалось отправить ответы.'));
-        return;
-      }
-      alert('Тест завершён! Результаты сохранены.');
-      window.location.href = '/thanks';
+
+      const result = await resp.json();
+      if (!resp.ok) return alert(result.detail || 'Ошибка при отправке ответов');
+
+      document.getElementById('test').classList.add('hidden');
+      document.getElementById('result').classList.remove('hidden');
+      document.getElementById('result-text').innerText =
+        "Тест завершён! Результаты успешно сохранены.";
     }
-
-    showQuestion();
   </script>
-
 </body>
 </html>

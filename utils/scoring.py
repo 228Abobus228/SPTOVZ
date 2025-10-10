@@ -26,7 +26,7 @@ def compute_result(answers: Dict[str, int], questions: List[Dict[str, Any]], sco
 
     missing = [qid for qid in qmap.keys() if qid not in answers]
     if missing:
-        raise ValueError(f"Нет ответов на вопросы: {', '.join(missing)}")
+        raise ValueError(f"Нет ответов на вопросы: {', '.join(map(str, missing))}")
 
     for qid, rev in qmap.items():
         v = answers[qid]
