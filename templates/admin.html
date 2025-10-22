@@ -4,181 +4,294 @@
   <meta charset="UTF-8">
   <title>СПТ ОВЗ — Админ-панель</title>
   <style>
-    body { font-family: sans-serif; margin: 40px; max-width: 800px; }
-    h1 { color: #004477; }
-    input, select { padding: 4px; margin: 4px 0; }
-    button { margin-top: 10px; padding: 6px 15px; cursor: pointer; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      min-height: 100vh;
+      background: #f5f7fa;
+      color: #333;
+      font-size: 25px; /* ↑ увеличено */
+    }
+    .sidebar {
+      width: 300px;
+      background: #004477;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 25px 20px;
+    }
+    .sidebar h1 {font-size: 30px; }
+    .sidebar h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 35px;
+    }
+    .menu a {
+      color: #fff;
+      text-decoration: none;
+      display: block;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      transition: background 0.2s;
+      font-size: 23px;
+    }
+    .menu a:hover, .menu a.active { background: #0066aa; }
+    .main { flex: 1; padding: 30px; overflow-y: auto; }
+    h3 { color: #004477; margin-top: 0; font-size: 25px; }
+    input, select, button {
+      padding: 10px 14px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 17px;
+    }
+    button {
+      background: #004477;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: 0.2s;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 17px;
+    }
+    button:hover { background: #0066aa; }
     .hidden { display: none; }
-    #classes, #codes { margin-top: 15px; }
-    hr { margin: 30px 0; }
+    .card {
+      background: #fff;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+    }
+    .code-list div { padding: 6px 0; border-bottom: 1px solid #eee; }
+    .export-btn { background: #228b22; }
+
   </style>
 </head>
 <body>
-  <h1>Админ-панель СПТ ОВЗ</h1>
 
-  <!-- Авторизация -->
-  <div id="login">
-    <h3>Авторизация</h3>
-    <input id="email" placeholder="Email" type="email"><br>
-    <input id="password" placeholder="Пароль" type="password"><br>
-    <button onclick="login()">Войти</button>
+  <!-- ===== Левое меню ===== -->
+  <div class="sidebar">
+    <h2>СПТ ОВЗ</h2>
+    <div id="menu" class="menu hidden">
+      <a href="#" class="active" onclick="showSection('home', this)">🏠 Главная</a>
+      <a href="#" onclick="showSection('class', this)">🏫 Создать класс</a>
+      <a href="#" onclick="showSection('codes', this)">🔑 Создать коды</a>
+    </div>
   </div>
 
-  <!-- Панель после входа -->
-  <div id="panel" class="hidden">
-    <h3>Здравствуйте, <span id="user-email"></span></h3>
-    <p><b>Учреждение:</b> <span id="institution-name"></span>
-       (<span id="institution-type"></span>)</p>
-    <hr>
+  <!-- ===== Основная часть ===== -->
+  <div class="main">
 
-    <!-- Создание класса -->
-    <h3>Создание класса</h3>
-    <input id="class-name" placeholder="Название класса"><br>
-    <button onclick="createClass()">Создать класс</button>
+    <!-- Авторизация -->
+    <div id="section-login" class="card">
+      <h3>Авторизация</h3>
+      <input id="email" type="email" placeholder="Email" style="width:20%"><br>
+      <input id="password" type="password" placeholder="Пароль" style="width:20%"><br>
+      <button onclick="login()">Войти</button>
+    </div>
 
-    <!-- Список классов -->
-    <div id="classes"></div>
+    <!-- Панель (всё остальное скрыто до авторизации) -->
+    <div id="panel" class="hidden">
 
-    <hr>
-    <!-- Генерация кодов -->
-    <h3>Создание кодов тестирования</h3>
-    <label>Выберите класс:
-      <select id="class-select"></select>
-    </label><br>
-    <label>Количество кодов:
-      <input id="count" type="number" value="1" min="1" max="100">
-    </label><br>
-    <button onclick="generateKeys()">Создать коды</button>
-    <div id="codes"></div>
-    <hr>
-    <h3>Список кодов</h3>
-    <button onclick="loadKeys()">Обновить</button>
-    <div id="keys-list"></div>
+      <!-- Главная -->
+      <div id="section-home" class="card">
+        <h3>Информация об аккаунте</h3>
+        <p><b>Email:</b> <span id="user-email">—</span></p>
+        <p><b>Учреждение:</b> <span id="institution-name">—</span></p>
+        <p><b>Тип:</b> <span id="institution-type">—</span></p>
+      </div>
+
+      <!-- Создание класса -->
+      <div id="section-class" class="card hidden">
+        <h3>Создание класса (группы)</h3>
+        <input id="class-name" placeholder="Название класса"><br>
+        <button onclick="createClass()">Создать класс</button>
+        <div id="classes"></div>
+      </div>
+
+      <!-- Создание кодов -->
+      <div id="section-codes" class="card hidden">
+        <h3>Создание кодов тестирования</h3>
+        <label>Выберите класс:
+          <select id="class-select"></select>
+        </label><br>
+        <label>Количество кодов:
+          <input id="count" type="number" value="1" min="1" max="100">
+        </label><br>
+        <button onclick="generateKeys()">Создать коды</button>
+
+        <h4>Список кодов</h4>
+        <div style="margin-top:10px; border-top:1px solid #ccc; padding-top:8px;">
+          <h4>Фильтры</h4>
+          <select id="filter-class" onchange="applyFilters()"><option value="">Все классы</option></select>
+          <select id="filter-form" onchange="applyFilters()">
+            <option value="">Все формы</option>
+            <option value="A">A (школа)</option>
+            <option value="B">B (колледж)</option>
+            <option value="C">C (вуз)</option>
+          </select>
+          <select id="filter-status" onchange="applyFilters()">
+            <option value="">Все статусы</option>
+            <option value="used">Пройденные</option>
+            <option value="unused">Не пройденные</option>
+          </select>
+        </div>
+
+        <div id="keys-list" class="code-list" style="margin-top:10px;"></div>
+        <button onclick="loadKeys()">Обновить</button>
+        <button class="export-btn" onclick="exportToExcel()">Выгрузить в Excel</button>
+      </div>
+
+    </div>
   </div>
 
-  <script>
-    let token = null;
-    let classes = [];
+<script>
+let token = null;
+let classes = [];
+let allKeys = [];
 
-    async function loadKeys() {
-  const resp = await fetch('/class/keys', {
+// ===== Навигация =====
+function showSection(section, link) {
+  document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
+  link.classList.add('active');
+  document.querySelectorAll('#panel .card').forEach(div => div.classList.add('hidden'));
+  document.getElementById('section-' + section).classList.remove('hidden');
+}
+
+// ===== Авторизация =====
+async function login() {
+  const form = new URLSearchParams();
+  form.append('username', document.getElementById('email').value);
+  form.append('password', document.getElementById('password').value);
+
+  const resp = await fetch('/token', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: form
+  });
+  const data = await resp.json();
+  if (!resp.ok) return alert('Ошибка входа: ' + (data.detail || ''));
+
+  token = data.access_token;
+  document.getElementById('user-email').innerText = document.getElementById('email').value;
+  document.getElementById('section-login').classList.add('hidden');
+  document.getElementById('panel').classList.remove('hidden');
+  document.getElementById('menu').classList.remove('hidden'); // 👈 меню теперь появляется после входа
+
+  await loadProfile();
+  await loadClasses();
+  await loadKeys();
+}
+
+// ===== Профиль =====
+async function loadProfile() {
+  const resp = await fetch('/me', { headers: { 'Authorization': 'Bearer ' + token } });
+  const data = await resp.json();
+  if (!resp.ok) return alert('Ошибка профиля: ' + data.detail);
+  document.getElementById('institution-name').innerText = data.institution_name;
+  document.getElementById('institution-type').innerText =
+    data.education_type === 'school' ? 'Школа (форма А)' :
+    data.education_type === 'college' ? 'Колледж (форма B)' : 'ВУЗ (форма C)';
+}
+
+// ===== Классы =====
+async function createClass() {
+  const name = document.getElementById('class-name').value.trim();
+  if (!name) return alert('Введите название класса');
+  const resp = await fetch('/class/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ name })
+  });
+  const data = await resp.json();
+  if (resp.ok) {
+    alert('Класс создан: ' + data.name);
+    document.getElementById('class-name').value = '';
+    await loadClasses();
+  } else alert('Ошибка: ' + data.detail);
+}
+
+async function loadClasses() {
+  const resp = await fetch('/class/my', { headers: { 'Authorization': 'Bearer ' + token } });
+  const data = await resp.json();
+  if (!resp.ok) return alert('Ошибка: ' + data.detail);
+  classes = data;
+  document.getElementById('class-select').innerHTML =
+    data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('classes').innerHTML =
+    '<h4>Мои классы:</h4>' + data.map(c => `<div>• ${c.name}</div>`).join('');
+  const filterSelect = document.getElementById('filter-class');
+  if (filterSelect) {
+    filterSelect.innerHTML = '<option value="">Все классы</option>' +
+      data.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  }
+}
+
+// ===== Коды =====
+async function generateKeys() {
+  const classId = document.getElementById('class-select').value;
+  const count = parseInt(document.getElementById('count').value);
+  if (!classId || !count) return alert('Выберите класс и количество');
+  const resp = await fetch(`/class/keys/generate?class_id=${classId}&count=${count}`, {
+    method: 'POST',
     headers: { 'Authorization': 'Bearer ' + token }
   });
   const data = await resp.json();
+  if (!resp.ok) return alert('Ошибка: ' + data.detail);
+  await loadKeys();
+}
+
+async function loadKeys() {
+  const resp = await fetch('/class/keys', { headers: { 'Authorization': 'Bearer ' + token } });
+  const data = await resp.json();
   if (!resp.ok) return alert('Ошибка: ' + (data.detail || JSON.stringify(data)));
+  allKeys = data;
+  renderKeys();
+}
 
+// ===== Фильтры =====
+function applyFilters() {
+  const classFilter = document.getElementById('filter-class').value;
+  const formFilter = document.getElementById('filter-form').value;
+  const statusFilter = document.getElementById('filter-status').value;
+  let filtered = allKeys;
+  if (classFilter) filtered = filtered.filter(k => k.class_name === classFilter);
+  if (formFilter) filtered = filtered.filter(k => k.form === formFilter);
+  if (statusFilter) filtered = filtered.filter(k => statusFilter === 'used' ? k.used : !k.used);
+  renderKeys(filtered);
+}
+
+function renderKeys(list = allKeys) {
   const div = document.getElementById('keys-list');
-  if (data.length === 0) {
-    div.innerHTML = '<p>Коды ещё не созданы.</p>';
-    return;
-  }
-
-  div.innerHTML = data.map(k => `
-    <div style="margin-bottom:4px;">
+  if (list.length === 0) return div.innerHTML = '<p>Коды ещё не созданы.</p>';
+  div.innerHTML = list.map(k => `
+    <div>
       <b>${k.code}</b> (${k.class_name}, форма ${k.form})
       <span style="color:${k.used ? 'green' : 'red'}; font-weight:bold;">
         ${k.used ? 'пройден' : 'не пройден'}
       </span>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
+// ===== Excel =====
+function exportToExcel() {
+  if (!allKeys.length) return alert('Нет данных для экспорта');
+  const rows = [['Код', 'Класс', 'Форма', 'Статус']];
+  allKeys.forEach(k => rows.push([k.code, k.class_name, k.form, k.used ? 'пройден' : 'не пройден']));
+  const csv = '\uFEFF' + rows.map(r => r.join(';')).join('\n'); // добавляем BOM
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'codes_export.csv';
+  link.click();
+}
+</script>
 
-    async function register() {
-      const payload = {
-        email: document.getElementById('reg-email').value,
-        password: document.getElementById('reg-password').value,
-        institution_name: document.getElementById('reg-institution').value,
-        education_type: document.getElementById('reg-type').value
-      };
-      const resp = await fetch('/register', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
-      if (resp.ok) alert('Регистрация успешна! Теперь войдите.');
-      else alert('Ошибка: ' + (data.detail || JSON.stringify(data)));
-    }
-
-    async function login() {
-      const form = new URLSearchParams();
-      form.append('username', document.getElementById('email').value);
-      form.append('password', document.getElementById('password').value);
-
-      const resp = await fetch('/token', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: form
-      });
-      const data = await resp.json();
-      if (!resp.ok) return alert('Ошибка входа: ' + (data.detail || ''));
-      token = data.access_token;
-
-      document.getElementById('user-email').innerText = document.getElementById('email').value;
-      document.getElementById('login').classList.add('hidden');
-      document.getElementById('panel').classList.remove('hidden');
-
-      await loadProfile();
-      await loadClasses();
-    }
-
-    async function loadProfile() {
-      const resp = await fetch('/me', { headers: { 'Authorization': 'Bearer ' + token } });
-      const data = await resp.json();
-      if (!resp.ok) return alert('Ошибка профиля: ' + data.detail);
-      document.getElementById('institution-name').innerText = data.institution_name;
-      document.getElementById('institution-type').innerText =
-        data.education_type === 'school' ? 'Школа (форма А)' :
-        data.education_type === 'college' ? 'Колледж (форма B)' :
-        'ВУЗ (форма C)';
-    }
-
-    async function createClass() {
-      const name = document.getElementById('class-name').value.trim();
-      if (!name) return alert('Введите название класса');
-      const resp = await fetch('/class/create', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-        body: JSON.stringify({ name })
-      });
-      const data = await resp.json();
-      if (resp.ok) {
-        alert('Класс создан: ' + data.name);
-        document.getElementById('class-name').value = '';
-        await loadClasses();
-      } else alert('Ошибка: ' + data.detail);
-    }
-
-    async function loadClasses() {
-      const resp = await fetch('/class/my', { headers: { 'Authorization': 'Bearer ' + token } });
-      const data = await resp.json();
-      if (!resp.ok) return alert('Ошибка: ' + data.detail);
-      classes = data;
-      const select = document.getElementById('class-select');
-      select.innerHTML = data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      const div = document.getElementById('classes');
-      div.innerHTML = '<h4>Мои классы:</h4>' +
-        data.map(c => `<div>• ${c.name} (${c.education_type})</div>`).join('');
-    }
-
-    async function generateKeys() {
-      const classId = document.getElementById('class-select').value;
-      const count = parseInt(document.getElementById('count').value);
-      const payload = { class_id: classId, count: count };
-      const resp = await fetch(`/class/keys/generate?class_id=${classId}&count=${count}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
-      if (!resp.ok) return alert('Ошибка: ' + data.detail);
-      const div = document.getElementById('codes');
-      div.innerHTML = '<h4>Созданные коды:</h4>' +
-        data.map(k => `<div>Код: <b>${k.code}</b> (форма ${k.form_type})</div>`).join('');
-      await loadKeys(); // чтобы список обновился после создания
-
-    }
-  </script>
 </body>
 </html>
