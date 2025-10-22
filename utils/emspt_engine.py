@@ -4,11 +4,14 @@ from typing import Dict, Any
 from dataclasses import dataclass
 import yaml
 
-from SPTOVZ.utils.scoring import compute_result
+
+# --------------------- Константы ---------------------
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+CONFIG_ROOT = BASE_DIR / "config" / "emspt"
 
 
-CONFIG_ROOT = Path(__file__).resolve().parents[2] / "config" / "emspt"
-
+# --------------------- Профиль ---------------------
 
 @dataclass
 class Profile:
@@ -18,7 +21,7 @@ class Profile:
     gender: str      # "male" | "female"
 
 
-# --------------------- Вспомогательные функции ---------------------
+# --------------------- Загрузка YAML ---------------------
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
     if not path.exists():
@@ -28,114 +31,182 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
 
 
 def _load_keys(profile: Profile) -> Dict[str, Any]:
-    """Загружает ключ шкал в зависимости от формы."""
+    """Загружает ключи шкал по форме."""
     if profile.form == "A":
         path = CONFIG_ROOT / "keys_A.yaml"
     else:
         path = CONFIG_ROOT / "keys_BC.yaml"
-    return _load_yaml(path)
+    data = _load_yaml(path)
+    return data  # возвращаем весь словарь (risk_scales, protect_scales, lie_scale, keys)
 
 
 def _load_lie_correction() -> Dict[str, Any]:
     return _load_yaml(CONFIG_ROOT / "lie_correction.yaml")
 
 
-def _load_norms() -> Dict[str, Any]:
-    return _load_yaml(CONFIG_ROOT / "norms.yaml")
+def _load_norms(profile: Profile) -> Dict[str, Any]:
+    data = _load_yaml(CONFIG_ROOT / "norms.yaml")
+    return (
+        data.get(profile.form, {})
+            .get(profile.impairment, {})
+            .get(profile.gender, {})
+    )
 
 
 def _load_sten_table(profile: Profile) -> Dict[str, Any]:
-    """Загружает таблицу перевода в стэны по форме/нозологии/полу."""
-    path = (
-        CONFIG_ROOT.parent / "emspt" / "sten_tables"
-        / profile.form / profile.impairment / f"{profile.gender}.yaml"
-    )
+    path = CONFIG_ROOT / "sten_tables" / profile.form / profile.impairment / f"{profile.gender}.yaml"
     return _load_yaml(path)
 
+def _load_interpretations() -> Dict[str, Any]:
+    """Загружает интерпретации стэнов для шкал."""
+    path = CONFIG_ROOT / "interpretations.yaml"
+    if not path.exists():
+        return {}
+    return _load_yaml(path)
 
 # --------------------- Основная функция расчёта ---------------------
 
-def compute_emspt(answers_map: Dict[str, int],
-                  profile: Profile,
-                  questions: list[dict],
-                  scoring_cfg: dict) -> Dict[str, Any]:
+def compute_emspt(answers_map: Dict[str, int], profile: Profile) -> Dict[str, Any]:
     """
-    Выполняет полный цикл расчёта ЕМ СПТ:
-    1. Подсчёт сырых баллов (compute_result)
-    2. Коррекция по шкале лжи
-    3. Расчёт KVERIPO / IRP
-    4. Определение интервалов
-    5. Перевод в стэны
+    Выполняет полный расчёт результатов ЕМ СПТ-ОВЗ:
+    - суммирует ответы по шкалам
+    - применяет коррекцию по ЛЖ
+    - считает IRP и KVERIPO
+    - определяет интервалы
+    - переводит в стэны
     """
-
-    # 1️⃣ Базовые результаты
-    raw = compute_result(answers_map, questions, scoring_cfg)
-    keys = _load_keys(profile)
-    norms = _load_norms()
-    sten_table = _load_sten_table(profile)
+    keys_data = _load_keys(profile)
     lie_cfg = _load_lie_correction()
+    norms = _load_norms(profile)
+    sten_table = _load_sten_table(profile)
 
-    # --- вычисление по шкалам из keys_* ---
-    scales = {}
-    for scale_name, items in keys.items():
-        scales[scale_name] = sum(answers_map.get(str(qid), 0) for qid in items)
+    risk_scales = keys_data["risk_scales"]
+    protect_scales = keys_data["protect_scales"]
+    lie_scale = keys_data["lie_scale"]
+    keys = keys_data["keys"]
 
-    # 2️⃣ Коррекция по шкале лжи (если есть "L")
-    lie_raw = scales.get("L", 0)
-    if lie_raw and lie_cfg:
-        limit = lie_cfg.get("limit", 0)
-        coeff = lie_cfg.get("coeff", 1)
-        if lie_raw >= limit:
-            for k in scales:
-                if k != "L":
-                    scales[k] = round(scales[k] * coeff, 2)
+    # ---------- 1️⃣ Расчёт сырых баллов по шкалам ----------
+    scales: Dict[str, float] = {}
+    for scale_name, question_ids in keys.items():
+        total = sum(answers_map.get(q, answers_map.get(str(q), 0)) for q in question_ids)
+        scales[scale_name] = round(total, 2)
 
-    # 3️⃣ Расчёт KVERIPO и IRP
-    irp = round(sum(scales.values()) / max(len(scales), 1), 2)
-    kveripo = 100 * irp / 10  # пример нормализации, потом уточним из norms.yaml
+    # ---------- 2️⃣ Коррекция по шкале ЛЖ ----------
+    lie_raw = scales.get(lie_scale, 0)
+    threshold = lie_cfg["threshold"].get(profile.form, 999)
+    coeff_value = (
+        lie_cfg["coeff"]
+        .get(profile.form, {})
+        .get(profile.impairment, {})
+        .get(profile.gender, 0.0)
+    )
 
-    # 4️⃣ Определение интервалов
-    irp_interval = _get_interval(irp, norms.get("IRP", []))
-    kveripo_interval = _get_interval(kveripo, norms.get("KVERIPO", []))
+    lie_applied = False
+    if lie_raw >= threshold:
+        lie_applied = True
+        for k in scales:
+            if k != lie_scale:
+                scales[k] = round(scales[k] * (1 - coeff_value), 2)
 
-    # 5️⃣ Перевод в стэны (по таблице формы/пола/нозологии)
+    # ---------- 3️⃣ Расчёт индексов IRP и KVERIPO ----------
+    sum_risk = sum(scales[s] for s in risk_scales if s in scales)
+    sum_prot = sum(scales[s] for s in protect_scales if s in scales)
+
+    irp = round(sum_risk, 2)
+    kveripo = round(sum_prot / sum_risk if sum_risk else 0, 2)
+
+    # ---------- 4️⃣ Определение интервалов ----------
+    irp_bands = norms.get("IRP_bands", {})
+    kveripo_max = norms.get("KVERIPO_max", 1)
+
+    def _band_label(value: float, bands: dict) -> str:
+        for label, (min_v, max_v) in bands.items():
+            if min_v <= value <= max_v:
+                return label
+        return "вне диапазона"
+
+    irp_interval = _band_label(irp, irp_bands)
+    kveripo_interval = "в норме" if kveripo <= kveripo_max else "выше нормы"
+
+    # ---------- 5️⃣ Перевод в стэны ----------
     sten_result = {}
     for scale, raw_value in scales.items():
         sten_result[scale] = _convert_to_sten(sten_table, scale, raw_value)
 
+    # ---------- 6️⃣ Возврат результата ----------
+    interpretations_data = _load_interpretations()
+    interpretations_result = {}
+
+    # Берём только те шкалы, которые реально есть в форме теста
+    active_scales = set(keys.keys())
+
+    for scale, sten_value in sten_result.items():
+        if scale not in active_scales:
+            continue  # пропускаем шкалы не из текущего теста
+        if not sten_value or sten_value == 0:
+            continue
+
+        # Определяем уровень по диапазону стэна
+        if 1 <= sten_value <= 3:
+            level = "low"
+        elif 4 <= sten_value <= 7:
+            level = "mid"
+        else:
+            level = "high"
+
+        # Берём текст интерпретации (если есть)
+        text = interpretations_data.get(scale, {}).get(level, "")
+        interpretations_result[scale] = {
+            "sten": sten_value,
+            "level": level,
+            "text": text or "(описание не задано)"
+        }
+
+    # ---------- 7️⃣ Возврат результата ----------
     return {
-        "raw": raw,
         "scales": scales,
+        "lie_raw": lie_raw,
+        "lie_applied": lie_applied,
         "irp": irp,
         "irp_interval": irp_interval,
         "kveripo": kveripo,
         "kveripo_interval": kveripo_interval,
         "sten": sten_result,
+        "interpretations": interpretations_result,
         "profile": profile.__dict__,
     }
 
 
-# --------------------- Вспомогательные функции ---------------------
-
-def _get_interval(value: float, table: list[dict]) -> str:
-    """
-    Находит интервал по таблице норм:
-    [{'min':0,'max':3,'label':'низкий'}, ...]
-    """
-    for row in table:
-        if row["min"] <= value <= row["max"]:
-            return row["label"]
-    return "вне диапазона"
-
+# --------------------- Перевод в стэны ---------------------
 
 def _convert_to_sten(sten_table: Dict[str, Any], scale: str, value: float) -> int:
     """
-    Находит ближайший стэн по шкале.
-    sten_table = { "A": { "hearing": { "male": { "scale1": {raw: sten,...}}}}}
+    Перевод "сырых" баллов в стэны.
+    Поддерживает формат:
+      PPZ:
+        - [1,9]
+        - [10,15]
+        - [16,21]
+        ...
+    Возвращает номер интервала (1–10), в который попадает значение.
     """
-    table = sten_table.get(scale) or {}
-    if not table:
+    if not sten_table or scale not in sten_table:
         return 0
-    # ищем ближайшее значение
-    diffs = {abs(int(raw) - value): sten for raw, sten in table.items()}
-    return diffs[min(diffs.keys())]
+
+    intervals = sten_table[scale]
+    if not isinstance(intervals, list):
+        return 0
+
+    # проходим по каждому диапазону
+    for i, rng in enumerate(intervals, start=1):
+        if isinstance(rng, list) and len(rng) == 2:
+            low, high = rng
+            if low <= value <= high:
+                return i
+
+    # если значение выше всех диапазонов → максимальный стэн
+    if intervals and isinstance(intervals[-1], list):
+        return 10
+
+    return 0
+

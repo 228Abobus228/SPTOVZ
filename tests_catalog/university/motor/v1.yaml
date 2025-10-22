@@ -4,7 +4,7 @@ meta:
   form: "C"                  # male | female
   code: UNI_MOTOR_V1            # ДОЛЖЕН совпадать с кодом из селектора
   version: 1
-  title: "2.3.3. ЕМ СПТ форма В (Нарушение моторных функций)"
+  title: "2.3.3. ЕМ СПТ форма С (Нарушение моторных функций)"
   locale: "ru"
   scoring:
     scale_min: 1

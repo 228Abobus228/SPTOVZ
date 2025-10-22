@@ -2,7 +2,9 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 from typing import Any, Dict
-
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi import Request
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -13,6 +15,8 @@ from SPTOVZ.models.testbank import TestContent
 from SPTOVZ.schemas.session import StartTestRequest, StartTestResponse
 from SPTOVZ.utils.test_selector import select_test
 from SPTOVZ.utils.emspt_engine import compute_emspt, Profile
+
+templates = Jinja2Templates(directory="SPTOVZ/templates")
 
 router = APIRouter(prefix="/session", tags=["Session"])
 
@@ -74,9 +78,6 @@ def start_test(payload: StartTestRequest, db: Session = Depends(get_db)) -> Star
 
 @router.post("/submit-answers")
 def submit_answers(payload: Dict[str, Any], db: Session = Depends(get_db)):
-    print("==== SUBMIT ANSWERS ====")
-    print("RAW BODY:", payload)
-
     session_id = payload.get("session_id")
     answers_raw = payload.get("answers")
     if not session_id or not answers_raw:
@@ -105,8 +106,6 @@ def submit_answers(payload: Dict[str, Any], db: Session = Depends(get_db)):
     computed = compute_emspt(
         answers_map=answers_map,
         profile=profile,
-        questions=content.questions,
-        scoring_cfg=content.scoring,
     )
 
     session.result = computed
@@ -124,3 +123,36 @@ def submit_answers(payload: Dict[str, Any], db: Session = Depends(get_db)):
         "computed": True,
         "result": computed,
     }
+
+import json
+
+@router.get("/result/{session_id}", response_class=HTMLResponse)
+def get_test_result(request: Request, session_id: str, db: Session = Depends(get_db)):
+    session = db.get(TestSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    if not session.result:
+        raise HTTPException(status_code=400, detail="Результаты ещё не рассчитаны")
+
+    # 🔧 Распаковываем JSON, если это строка
+    result = session.result
+    if isinstance(result, str):
+        result = json.loads(result)
+
+    sten_data = result.get("sten", {})
+    profile = result.get("profile", {})
+
+    return templates.TemplateResponse(
+        "result_page.html",
+        {
+            "request": request,
+            "session_id": session_id,
+            "sten_data": sten_data,
+            "profile": profile,
+            "irp": result.get("irp"),
+            "irp_interval": result.get("irp_interval"),
+            "kveripo": result.get("kveripo"),
+            "kveripo_interval": result.get("kveripo_interval"),
+        },
+    )
+

@@ -4,7 +4,7 @@ meta:
   form: "A"                  # male | female
   code: SCH_VISION_V1            # ДОЛЖЕН совпадать с кодом из селектора
   version: 1
-  title: "2.1.1. ЕМ СПТ форма А (слабовидящие)"
+  title: "2.1.2. ЕМ СПТ форма А (слабовидящие)"
   locale: "ru"
   scoring:
     scale_min: 1
