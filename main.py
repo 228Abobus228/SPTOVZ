@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from SPTOVZ.database import Base, engine
 from SPTOVZ import models
 from SPTOVZ.routers import auth as auth_router, class_group as class_router, session as session_router
+from SPTOVZ.routers import stats
 
 app = FastAPI(title="СПТ ОВЗ")
 Base.metadata.create_all(bind=engine)
@@ -32,6 +33,7 @@ with Session(engine) as db:
 app.include_router(auth_router.router)
 app.include_router(class_router.router)
 app.include_router(session_router.router)
+app.include_router(stats.router)
 
 templates = Jinja2Templates(directory="SPTOVZ/templates")
 

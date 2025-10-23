@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>СПТ ОВЗ — Тестирование</title>
+  <link rel="stylesheet" href="/static/bvi/css/bvi.min.css">
+<script src="/static/bvi/js/bvi.min.js"></script>
+
   <style>
     * { box-sizing: border-box; }
     body {
@@ -105,9 +108,23 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
+
   </style>
 </head>
+<script>
+  window.addEventListener('DOMContentLoaded', function() {
+    if (typeof window.Bvi !== 'undefined') {
+      new window.Bvi({
+        target: '#bvi-panel', // вставляем панель сюда
+        position: 'top',       // сверху
+        alwaysVisible: true    // панель всегда на экране
+      });
+    }
+  });
+</script>
 <body>
+  <div class="bvi-panel" id="bvi-panel"></div>
 
   <!-- Старт -->
   <div id="start" class="card">

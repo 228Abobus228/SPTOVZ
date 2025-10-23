@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from datetime import datetime
 from SPTOVZ.database import get_db
 from SPTOVZ.models.class_group import Key, Class
 from SPTOVZ.models.session import TestSession
@@ -114,6 +114,7 @@ def submit_answers(payload: Dict[str, Any], db: Session = Depends(get_db)):
     if key:
         key.used = True
 
+    session.finished_at = datetime.utcnow()
     db.commit()
 
     return {

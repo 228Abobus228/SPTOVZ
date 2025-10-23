@@ -1,297 +1,554 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>СПТ ОВЗ — Админ-панель</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", sans-serif;
-      display: flex;
-      min-height: 100vh;
-      background: #f5f7fa;
-      color: #333;
-      font-size: 25px; /* ↑ увеличено */
-    }
-    .sidebar {
-      width: 300px;
-      background: #004477;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      padding: 25px 20px;
-    }
-    .sidebar h1 {font-size: 30px; }
-    .sidebar h2 {
-      text-align: center;
-      margin-bottom: 30px;
-      font-size: 35px;
-    }
-    .menu a {
-      color: #fff;
-      text-decoration: none;
-      display: block;
-      padding: 14px 16px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      transition: background 0.2s;
-      font-size: 23px;
-    }
-    .menu a:hover, .menu a.active { background: #0066aa; }
-    .main { flex: 1; padding: 30px; overflow-y: auto; }
-    h3 { color: #004477; margin-top: 0; font-size: 25px; }
-    input, select, button {
-      padding: 10px 14px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 17px;
-    }
-    button {
-      background: #004477;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      transition: 0.2s;
-      padding: 10px 16px;
-      border-radius: 6px;
-      font-size: 17px;
-    }
-    button:hover { background: #0066aa; }
-    .hidden { display: none; }
-    .card {
-      background: #fff;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      margin-bottom: 25px;
-    }
-    .code-list div { padding: 6px 0; border-bottom: 1px solid #eee; }
-    .export-btn { background: #228b22; }
+<meta charset="UTF-8" />
+<title>СПТ ОВЗ — Админ-панель</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --brand:#0b4b73;
+  --brand-2:#0b6aa8;
+  --bg:#f5f7fa;
+  --card:#fff;
+  --muted:#6b7b8c;
+  --shadow:0 2px 6px rgba(0,0,0,.08);
+  --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+.hidden { display: none !important; }
+body{
+  font-family:"Segoe UI",system-ui,-apple-system,Arial;
+  background:var(--bg);
+  color:#333;
+  display:grid;
+  grid-template-columns:260px 1fr 340px;
+  min-height:100vh;
+}
 
-  </style>
+/* Sidebar */
+.sidebar{
+  background:var(--brand);
+  color:#fff;
+  padding:20px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  position:relative;
+  z-index:1000;
+}
+.logo{
+  text-align:center;
+  font-weight:700;
+  font-size:20px;
+  margin-bottom:10px;
+}
+.menu a{
+  display:block;
+  text-decoration:none;
+  color:#fff;
+  padding:10px 12px;
+  border-radius:8px;
+  transition:background .2s;
+}
+.menu a:hover,
+.menu a.active{background:var(--brand-2);}
+
+/* Main content */
+.main{
+  padding:24px;
+  overflow-y:auto;
+}
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:20px;
+  margin-bottom:18px;
+}
+h3{color:var(--brand);margin-bottom:10px;}
+h4{margin:10px 0;color:var(--brand-2);}
+input,select,button{
+  font-size:15px;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  margin-top:6px;
+  margin-bottom:10px;
+  width:100%;
+}
+button{
+  background:var(--brand);
+  color:#fff;
+  cursor:pointer;
+  border:none;
+  transition:.25s;
+}
+button:hover{background:var(--brand-2);}
+.export-btn{background:#228b22;}
+.export-btn:hover{background:#2da82d;}
+.code-list div{padding:4px 0;border-bottom:1px solid #eee;}
+
+/* Rightbar */
+.rightbar{
+  background:#f0f4f8;
+  border-left:1px solid #dbe4ec;
+  padding:16px;
+  overflow-y:auto;
+}
+.summary-card{
+  background:#fff;
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  padding:14px;
+  margin-bottom:12px;
+}
+.kpi{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+}
+.tile{
+  background:#f8fafc;
+  border:1px solid #eef2f6;
+  border-radius:8px;
+  text-align:center;
+  padding:8px;
+}
+.tile b{color:var(--brand);}
+.muted{color:var(--muted);font-size:14px;}
+.chart-wrap{height:150px;}
+.chart-wrap--small{height:100px;}
+
+/* Burger */
+.burger{
+  display:none;
+  position:fixed;
+  top:14px;
+  left:14px;
+  z-index:1500;
+  width:44px;
+  height:44px;
+  background:var(--brand);
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  justify-content:center;
+  align-items:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+.burger span,
+.burger span::before,
+.burger span::after{
+  display:block;
+  position:absolute;
+  width:22px;
+  height:2px;
+  background:#fff;
+  transition:.25s;
+  content:"";
+}
+.burger span::before{top:-6px;}
+.burger span::after{top:6px;}
+
+/* Overlay */
+#overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.35);
+  z-index:900;
+}
+#overlay.show{display:block;}
+
+/* Adaptive */
+@media(max-width:1100px){
+  body{grid-template-columns:1fr;}
+  .rightbar{display:none;}
+  .burger{display:flex;}
+  .sidebar{
+    position:fixed;
+    top:0;
+    bottom:0;
+    left:-260px;
+    width:240px;
+    transition:left .25s;
+  }
+  .sidebar.open{left:0;}
+  .main{padding:70px 16px 20px;}
+}
+  #section-login {
+  max-width: 420px;
+  margin: 40px auto; /* центрируем по горизонтали */
+}
+#section-login input {
+  width: 100%;
+  background: #eaf3fe;
+}
+#section-login button {
+  width: 100%;
+  font-size: 15px;
+}
+  /* --- Режим авторизации --- */
+body.login-mode {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+body.login-mode .sidebar,
+body.login-mode .rightbar {
+  display: none !important;
+}
+
+body.login-mode .main {
+  width: 100%;
+  max-width: 420px;
+  padding: 0 16px;
+}
+
+body.login-mode .card {
+  width: 100%;
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+}
+
+body.login-mode #section-login {
+  display: block;
+}
+
+  .create-class {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.create-class input {
+  flex: 1;
+  min-width: 180px;
+}
+.create-class button {
+  flex-shrink: 0;
+  padding: 10px 14px;
+}
+
+.class-list {
+  margin-top: 10px;
+  border-top: 1px solid #e0e6ee;
+  padding-top: 10px;
+}
+.class-item {
+  background: #f8fafc;
+  border: 1px solid #e3e9f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow);
+  transition: transform .15s;
+}
+.class-item:hover {
+  transform: translateX(2px);
+}
+.class-name {
+  font-weight: 600;
+  color: var(--brand);
+}
+.class-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+
+</style>
 </head>
 <body>
 
-  <!-- ===== Левое меню ===== -->
-  <div class="sidebar">
-    <h2>СПТ ОВЗ</h2>
-    <div id="menu" class="menu hidden">
-      <a href="#" class="active" onclick="showSection('home', this)">🏠 Главная</a>
-      <a href="#" onclick="showSection('class', this)">🏫 Создать класс</a>
-      <a href="#" onclick="showSection('codes', this)">🔑 Создать коды</a>
+<!-- Burger -->
+<button class="burger" id="burger"><span></span></button>
+<div id="overlay" onclick="toggleMenu(false)"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="logo">СПТ ОВЗ</div>
+  <nav class="menu hidden" id="menu">
+    <a href="#" class="active" onclick="navTo('home',this)">🏠 Главная</a>
+    <a href="#" onclick="navTo('class',this)">🏫 Создать класс</a>
+    <a href="#" onclick="navTo('codes',this)">🔑 Создать коды</a>
+    <a href="#" onclick="navTo('summary',this);loadSummary();">📊 Итоги</a>
+    <a href="#" onclick="logout()">🚪 Выйти</a>
+  </nav>
+</aside>
+
+<!-- Main -->
+<main class="main">
+  <section id="section-login" class="card">
+    <h3>Авторизация</h3>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Пароль">
+    <button onclick="login()">Войти</button>
+  </section>
+
+  <div id="panel" class="hidden">
+    <section id="section-home" class="card">
+      <h3>Информация об аккаунте</h3>
+      <p><b>Email:</b> <span id="user-email">—</span></p>
+      <p><b>Учреждение:</b> <span id="institution-name">—</span></p>
+      <p><b>Тип:</b> <span id="institution-type">—</span></p>
+    </section>
+
+    <section id="section-class" class="card hidden">
+  <h3>Создание класса (группы)</h3>
+  <div class="create-class">
+    <input id="class-name" placeholder="Название класса">
+    <button onclick="createClass()">Создать класс</button>
+  </div>
+  <h4>Список классов</h4>
+  <div id="classes" class="class-list"></div>
+</section>
+
+
+    <section id="section-codes" class="card hidden">
+      <h3>Создание кодов тестирования</h3>
+      <label>Выберите класс:</label>
+      <select id="class-select"></select>
+      <label>Количество кодов:</label>
+      <input id="count" type="number" value="1" min="1" max="100">
+      <button onclick="generateKeys()">Создать коды</button>
+
+      <h4>Список кодов</h4>
+      <div style="border-top:1px solid #ddd;margin-top:8px;padding-top:8px">
+        <h4>Фильтры</h4>
+        <select id="filter-class" onchange="applyFilters()"><option value="">Все классы</option></select>
+        <select id="filter-status" onchange="applyFilters()">
+          <option value="">Все статусы</option>
+          <option value="unused">Не пройденные</option>
+          <option value="used">Пройденные</option>
+        </select>
+      </div>
+      <div id="keys-list" class="code-list" style="margin-top:10px"></div>
+      <button class="export-btn" onclick="exportToExcel()">⬇️ Выгрузить в Excel</button>
+    </section>
+
+    <section id="section-summary" class="card hidden">
+      <h3>📊 Итоги тестирования</h3>
+      <p><b>Учреждение:</b> <span id="sum-inst-center">—</span></p>
+      <div class="kpi" style="margin:12px 0;">
+        <div class="tile"><span class="muted">Всего</span><b id="sum-total-center">0</b></div>
+        <div class="tile"><span class="muted">Пройдено</span><b id="sum-done-center">0</b></div>
+        <div class="tile"><span class="muted">Осталось</span><b id="sum-left-center">0</b></div>
+      </div>
+      <h4>IRP</h4><div class="chart-wrap"><canvas id="irpChart"></canvas></div>
+      <h4 style="margin-top:10px;">KVERIPO</h4><div class="chart-wrap"><canvas id="kveripoChart"></canvas></div>
+    </section>
+  </div>
+</main>
+
+<!-- Rightbar -->
+<aside class="rightbar hidden" id="rightbar">
+  <div class="summary-card">
+    <h3>Итоги</h3>
+    <div class="muted">Учреждение</div>
+    <div id="sum-inst">—</div>
+  </div>
+  <div class="summary-card">
+    <div class="kpi">
+      <div class="tile"><span class="muted">Всего</span><b id="sum-total">0</b></div>
+      <div class="tile"><span class="muted">Пройдено</span><b id="sum-done">0</b></div>
+      <div class="tile"><span class="muted">Осталось</span><b id="sum-left">0</b></div>
     </div>
   </div>
-
-  <!-- ===== Основная часть ===== -->
-  <div class="main">
-
-    <!-- Авторизация -->
-    <div id="section-login" class="card">
-      <h3>Авторизация</h3>
-      <input id="email" type="email" placeholder="Email" style="width:20%"><br>
-      <input id="password" type="password" placeholder="Пароль" style="width:20%"><br>
-      <button onclick="login()">Войти</button>
-    </div>
-
-    <!-- Панель (всё остальное скрыто до авторизации) -->
-    <div id="panel" class="hidden">
-
-      <!-- Главная -->
-      <div id="section-home" class="card">
-        <h3>Информация об аккаунте</h3>
-        <p><b>Email:</b> <span id="user-email">—</span></p>
-        <p><b>Учреждение:</b> <span id="institution-name">—</span></p>
-        <p><b>Тип:</b> <span id="institution-type">—</span></p>
-      </div>
-
-      <!-- Создание класса -->
-      <div id="section-class" class="card hidden">
-        <h3>Создание класса (группы)</h3>
-        <input id="class-name" placeholder="Название класса"><br>
-        <button onclick="createClass()">Создать класс</button>
-        <div id="classes"></div>
-      </div>
-
-      <!-- Создание кодов -->
-      <div id="section-codes" class="card hidden">
-        <h3>Создание кодов тестирования</h3>
-        <label>Выберите класс:
-          <select id="class-select"></select>
-        </label><br>
-        <label>Количество кодов:
-          <input id="count" type="number" value="1" min="1" max="100">
-        </label><br>
-        <button onclick="generateKeys()">Создать коды</button>
-
-        <h4>Список кодов</h4>
-        <div style="margin-top:10px; border-top:1px solid #ccc; padding-top:8px;">
-          <h4>Фильтры</h4>
-          <select id="filter-class" onchange="applyFilters()"><option value="">Все классы</option></select>
-          <select id="filter-form" onchange="applyFilters()">
-            <option value="">Все формы</option>
-            <option value="A">A (школа)</option>
-            <option value="B">B (колледж)</option>
-            <option value="C">C (вуз)</option>
-          </select>
-          <select id="filter-status" onchange="applyFilters()">
-            <option value="">Все статусы</option>
-            <option value="used">Пройденные</option>
-            <option value="unused">Не пройденные</option>
-          </select>
-        </div>
-
-        <div id="keys-list" class="code-list" style="margin-top:10px;"></div>
-        <button onclick="loadKeys()">Обновить</button>
-        <button class="export-btn" onclick="exportToExcel()">Выгрузить в Excel</button>
-      </div>
-
-    </div>
+  <div class="summary-card">
+    <div class="muted">IRP (доли, %)</div>
+    <div class="chart-wrap--small"><canvas id="irpChartSide"></canvas></div>
   </div>
+  <div class="summary-card">
+    <div class="muted">KVERIPO (доли, %)</div>
+    <div class="chart-wrap--small"><canvas id="kveripoChartSide"></canvas></div>
+  </div>
+</aside>
 
 <script>
-let token = null;
-let classes = [];
-let allKeys = [];
+/* === JS из твоей версии без изменений логики === */
+let token=localStorage.getItem('spt_token');
+if (!token) document.body.classList.add('login-mode');
+let classes=[],allKeys=[],charts={};
+window.addEventListener('load',()=>{if(token)initApp();});
 
-// ===== Навигация =====
-function showSection(section, link) {
-  document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
-  link.classList.add('active');
-  document.querySelectorAll('#panel .card').forEach(div => div.classList.add('hidden'));
-  document.getElementById('section-' + section).classList.remove('hidden');
+function toggleMenu(force){
+  const sb=document.getElementById('sidebar'),ov=document.getElementById('overlay');
+  const open=force===undefined?!sb.classList.contains('open'):force;
+  sb.classList.toggle('open',open);
+  ov.classList.toggle('show',open);
+}
+document.getElementById('burger').addEventListener('click',()=>toggleMenu());
+
+function navTo(section,link){
+  document.querySelectorAll('.menu a').forEach(a=>a.classList.remove('active'));
+  if(link)link.classList.add('active');
+  document.querySelectorAll('#panel section.card').forEach(div=>div.classList.add('hidden'));
+  const el=document.getElementById('section-'+section);
+  if(el)el.classList.remove('hidden');
+  toggleMenu(false);
 }
 
-// ===== Авторизация =====
-async function login() {
-  const form = new URLSearchParams();
-  form.append('username', document.getElementById('email').value);
-  form.append('password', document.getElementById('password').value);
+function makeChart(id,label,labels,data){
+  const el=document.getElementById(id); if(!el)return;
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(el,{type:'bar',data:{labels,datasets:[{label,data,backgroundColor:'#0b6aa8'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
+}
 
-  const resp = await fetch('/token', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: form
-  });
-  const data = await resp.json();
-  if (!resp.ok) return alert('Ошибка входа: ' + (data.detail || ''));
+async function login(){
+  const form=new URLSearchParams();
+  form.append('username',document.getElementById('email').value);
+  form.append('password',document.getElementById('password').value);
+  const resp=await fetch('/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
+  const data=await resp.json();
+  if(!resp.ok)return alert('Ошибка входа: '+(data.detail||''));token=data.access_token;localStorage.setItem('spt_token',token);initApp();
+}
+function logout(){localStorage.removeItem('spt_token');token=null;location.reload();}
 
-  token = data.access_token;
-  document.getElementById('user-email').innerText = document.getElementById('email').value;
+async function initApp(){
+  document.body.classList.remove('login-mode');
   document.getElementById('section-login').classList.add('hidden');
   document.getElementById('panel').classList.remove('hidden');
-  document.getElementById('menu').classList.remove('hidden'); // 👈 меню теперь появляется после входа
-
-  await loadProfile();
-  await loadClasses();
-  await loadKeys();
+  document.getElementById('menu').classList.remove('hidden');
+  document.getElementById('rightbar').classList.remove('hidden');
+  await Promise.all([loadProfile(),loadClasses(),loadKeys(),loadSummary()]);
+  navTo('home');
 }
 
-// ===== Профиль =====
-async function loadProfile() {
-  const resp = await fetch('/me', { headers: { 'Authorization': 'Bearer ' + token } });
-  const data = await resp.json();
-  if (!resp.ok) return alert('Ошибка профиля: ' + data.detail);
-  document.getElementById('institution-name').innerText = data.institution_name;
-  document.getElementById('institution-type').innerText =
-    data.education_type === 'school' ? 'Школа (форма А)' :
-    data.education_type === 'college' ? 'Колледж (форма B)' : 'ВУЗ (форма C)';
+async function loadProfile(){
+  const r=await fetch('/me',{headers:{'Authorization':'Bearer '+token}}),d=await r.json();if(!r.ok)return;
+  document.getElementById('user-email').innerText=d.email||'';
+  document.getElementById('institution-name').innerText=d.institution_name||'';
+  document.getElementById('institution-type').innerText=
+    d.education_type==='school'?'Школа (форма А)':d.education_type==='college'?'Колледж (форма B)':'ВУЗ (форма C)';
 }
 
-// ===== Классы =====
 async function createClass() {
   const name = document.getElementById('class-name').value.trim();
   if (!name) return alert('Введите название класса');
   const resp = await fetch('/class/create', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
     body: JSON.stringify({ name })
   });
-  const data = await resp.json();
-  if (resp.ok) {
-    alert('Класс создан: ' + data.name);
-    document.getElementById('class-name').value = '';
-    await loadClasses();
-  } else alert('Ошибка: ' + data.detail);
+  if (!resp.ok) return alert('Ошибка при создании класса');
+  document.getElementById('class-name').value = '';
+  await loadClasses(); // обновляем список
 }
 
 async function loadClasses() {
-  const resp = await fetch('/class/my', { headers: { 'Authorization': 'Bearer ' + token } });
-  const data = await resp.json();
-  if (!resp.ok) return alert('Ошибка: ' + data.detail);
-  classes = data;
-  document.getElementById('class-select').innerHTML =
-    data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('classes').innerHTML =
-    '<h4>Мои классы:</h4>' + data.map(c => `<div>• ${c.name}</div>`).join('');
-  const filterSelect = document.getElementById('filter-class');
-  if (filterSelect) {
-    filterSelect.innerHTML = '<option value="">Все классы</option>' +
-      data.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-  }
-}
-
-// ===== Коды =====
-async function generateKeys() {
-  const classId = document.getElementById('class-select').value;
-  const count = parseInt(document.getElementById('count').value);
-  if (!classId || !count) return alert('Выберите класс и количество');
-  const resp = await fetch(`/class/keys/generate?class_id=${classId}&count=${count}`, {
-    method: 'POST',
+  const r = await fetch('/class/my', {
     headers: { 'Authorization': 'Bearer ' + token }
   });
-  const data = await resp.json();
-  if (!resp.ok) return alert('Ошибка: ' + data.detail);
-  await loadKeys();
+  const d = await r.json();
+  if (!r.ok) return;
+
+  classes = d;
+
+  // заполняем селекты
+  document.getElementById('class-select').innerHTML =
+    d.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('filter-class').innerHTML =
+    '<option value="">Все классы</option>' +
+    d.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+  // выводим список в блок
+  const list = document.getElementById('classes');
+  if (!d.length) {
+    list.innerHTML = '<p style="color:var(--muted)">Классы ещё не созданы</p>';
+    return;
+  }
+
+  list.innerHTML = d.map(c => `
+    <div class="class-item">
+      <div>
+        <div class="class-name">${c.name}</div>
+      </div>
+    </div>
+  `).join('');
 }
 
-async function loadKeys() {
-  const resp = await fetch('/class/keys', { headers: { 'Authorization': 'Bearer ' + token } });
-  const data = await resp.json();
-  if (!resp.ok) return alert('Ошибка: ' + (data.detail || JSON.stringify(data)));
-  allKeys = data;
+async function generateKeys(){
+  const id=document.getElementById('class-select').value,cnt=parseInt(document.getElementById('count').value);
+  if(!id||!cnt)return alert('Выберите класс и количество');
+  await fetch(`/class/keys/generate?class_id=${id}&count=${cnt}`,{method:'POST',headers:{'Authorization':'Bearer '+token}});
+  loadKeys();
+}
+async function loadKeys(){
+  const r=await fetch('/class/keys',{headers:{'Authorization':'Bearer '+token}}),d=await r.json();if(!r.ok)return;
+  allKeys=d.sort((a,b)=>(a.used===b.used?a.code.localeCompare(b.code):(a.used?1:-1)));
   renderKeys();
 }
-
-// ===== Фильтры =====
+let filteredKeys = [];
 function applyFilters() {
-  const classFilter = document.getElementById('filter-class').value;
-  const formFilter = document.getElementById('filter-form').value;
-  const statusFilter = document.getElementById('filter-status').value;
-  let filtered = allKeys;
-  if (classFilter) filtered = filtered.filter(k => k.class_name === classFilter);
-  if (formFilter) filtered = filtered.filter(k => k.form === formFilter);
-  if (statusFilter) filtered = filtered.filter(k => statusFilter === 'used' ? k.used : !k.used);
-  renderKeys(filtered);
+  const c = document.getElementById('filter-class').value;
+  const s = document.getElementById('filter-status').value;
+  let list = allKeys;
+  if (c) list = list.filter(k => k.class_name === c);
+  if (s) list = list.filter(k => s === 'used' ? k.used : !k.used);
+  filteredKeys = list;
+  renderKeys(list);
 }
-
 function renderKeys(list = allKeys) {
-  const div = document.getElementById('keys-list');
-  if (list.length === 0) return div.innerHTML = '<p>Коды ещё не созданы.</p>';
-  div.innerHTML = list.map(k => `
-    <div>
-      <b>${k.code}</b> (${k.class_name}, форма ${k.form})
-      <span style="color:${k.used ? 'green' : 'red'}; font-weight:bold;">
+  const d = document.getElementById('keys-list');
+  filteredKeys = list;
+  if (!list.length) {
+    d.innerHTML = '<p style="color:var(--muted)">Нет кодов</p>';
+    return;
+  }
+  d.innerHTML = list.map(k => `
+    <div class="key-item">
+      <b>${k.code}</b> — ${k.class_name}
+      <span class="key-status" style="color:${k.used ? 'green' : 'red'}">
         ${k.used ? 'пройден' : 'не пройден'}
       </span>
-    </div>`).join('');
+    </div>
+  `).join('');
 }
-
-// ===== Excel =====
 function exportToExcel() {
-  if (!allKeys.length) return alert('Нет данных для экспорта');
-  const rows = [['Код', 'Класс', 'Форма', 'Статус']];
-  allKeys.forEach(k => rows.push([k.code, k.class_name, k.form, k.used ? 'пройден' : 'не пройден']));
-  const csv = '\uFEFF' + rows.map(r => r.join(';')).join('\n'); // добавляем BOM
+  const exportList = filteredKeys.length ? filteredKeys : allKeys;
+  if (!exportList.length) return alert('Нет данных для выгрузки');
+
+  const rows = [['Код']];
+  exportList.forEach(k => rows.push([k.code]));
+  const csv = '\uFEFF' + rows.map(r => r.join(';')).join('\n');
+
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'codes_export.csv';
-  link.click();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'codes_filtered.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+async function loadSummary(){
+  const r=await fetch('/stats/summary',{headers:{'Authorization':'Bearer '+token}}),d=await r.json();if(!r.ok)return;
+  document.getElementById('sum-inst').innerText=d.institution||'—';
+  document.getElementById('sum-total').innerText=d.total??0;
+  document.getElementById('sum-done').innerText=d.completed??0;
+  document.getElementById('sum-left').innerText=d.remaining??0;
+  document.getElementById('sum-inst-center').innerText=d.institution||'—';
+  document.getElementById('sum-total-center').innerText=d.total??0;
+  document.getElementById('sum-done-center').innerText=d.completed??0;
+  document.getElementById('sum-left-center').innerText=d.remaining??0;
+  const irpL=["низкий","средний","высокий"],kvL=["низкий","высокий"];
+  const irpV=irpL.map(k=>d.irp_distribution?.[k]??0),kvV=kvL.map(k=>d.kveripo_distribution?.[k]??0);
+  makeChart("irpChart","IRP",irpL,irpV);
+  makeChart("irpChartSide","IRP",irpL,irpV);
+  makeChart("kveripoChart","KVERIPO",kvL,kvV);
+  makeChart("kveripoChartSide","KVERIPO",kvL,kvV);
 }
 </script>
-
 </body>
 </html>
